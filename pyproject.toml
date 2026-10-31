@@ -18,11 +18,19 @@ classifiers = [
 ]
 
 dependencies = [
+
     "fastapi[all]>=0.111.0",
     "uvicorn[standard]>=0.30.1",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.3.1",
     "structlog>=26.1.0",
+]
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+    "ruff",
+    "mypy",
 ]
 
 [tool.uv]
