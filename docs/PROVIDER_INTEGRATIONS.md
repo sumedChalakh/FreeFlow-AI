@@ -1,26 +1,25 @@
 # Provider integrations
 
-**Last updated:** 2026-10-29T15:14:00+05:30  
-**Status:** Design only. No adapters exist. Hosted vendors are not selected yet (OQ-004).
+**Last updated:** 2026-10-31T22:20:00+05:30  
+**Status:** Provider adapter interface (`backend/providers/base.py`), error hierarchy (`backend/providers/errors.py`), mock adapter (`backend/providers/mock.py`), and Ollama adapter (`backend/providers/ollama.py`) implemented and verified. Hosted adapters pending (Phase 3).
 
 ---
 
-## Common adapter interface (planned)
+## Common adapter interface
 
-Conceptual methods (Python protocol to be coded in Phase 2):
+Coded in `backend/providers/base.py` (`ProviderAdapter` ABC):
 
 - `adapter_id: str`
-- `list_models(context) -> list[NormalizedModel]`
-- `test_connection(context) -> HealthResult`
-- `complete_chat(context, request) -> NormalizedChatResponse`
-- `normalize_error(exc_or_response) -> GatewayError`
+- `async list_models(context: ProviderContext) -> list[ProviderModel]`
+- `async test_connection(context: ProviderContext) -> ConnectionHealth`
+- `async complete_chat(context: ProviderContext, request: ChatCompletionRequest) -> ChatCompletionResponse`
 
-`context` supplies base URL, timeouts, and a **secret handle**, not a logged key.
+`context` supplies `base_url`, `timeout_seconds`, `api_key` (unredacted in-memory context only; never logged), and `extra_headers`.
 
 Adapters must:
 
 - Apply timeouts.
-- Map usage when present; otherwise mark unknown.
+- Map usage when present; otherwise store `usage=None` (unknown), not fabricated zero.
 - Never log Authorization headers or full keys.
 - Avoid importing routing policy.
 
@@ -30,8 +29,8 @@ Adapters must:
 
 1. Confirm official API documentation, auth, model list, chat endpoint, rate limits, and terms.
 2. Record the official links in this file and an ADR if it is a first-of-class vendor.
-3. Implement adapter + fixtures.
-4. Register in the adapter registry only.
+3. Implement adapter inheriting `ProviderAdapter`.
+4. Register in `backend/providers/registry.py`.
 5. Add mock tests: success, timeout, invalid JSON, auth failure, unsupported capability.
 6. Optional manual smoke test documented as opt-in.
 7. Update catalog mapping, this doc, changelog, session log, file map.
@@ -44,8 +43,8 @@ Do not modify core routing `if provider == ...` trees for each vendor.
 
 | Adapter | Priority | Official docs | Status |
 |---|---|---|---|
-| `mock` | Tests | N/A (fixtures) | Planned Phase 2 |
-| `ollama` | Local MVP | [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) — re-verify at implementation time | Planned Phase 2 |
+| `mock` | Tests | N/A (fixtures in `backend/providers/mock.py`) | **Implemented & verified** (Phase 2) |
+| `ollama` | Local MVP | [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) — local endpoints `/api/tags`, `/api/chat` | **Implemented & verified** (Phase 2) |
 | Hosted A, B | MVP target of two hosted | TBD after owner credentials and current official docs | Not chosen |
 
 Re-verify URLs and model IDs at implementation time. Do not freeze stale model lists in this document as if they were current.

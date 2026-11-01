@@ -36,6 +36,8 @@ pnpm-debug.log*
 
 # Local data
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 data/

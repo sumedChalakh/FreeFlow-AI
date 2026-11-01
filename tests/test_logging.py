@@ -71,4 +71,3 @@ class TestSecretRedaction:
         assert result["password"] == "<redacted>"
         assert result["key"] == "<redacted>"
         assert result["user"] == "alice"
-

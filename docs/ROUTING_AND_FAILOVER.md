@@ -1,7 +1,7 @@
 # Routing and failover
 
-**Last updated:** 2026-10-29T15:14:00+05:30  
-**Status:** Design only. No routing engine exists.
+**Last updated:** 2026-10-31T22:56:00+05:30  
+**Status:** Implemented and verified in `backend/routing/` (`RoutingEngine`, `ModelResolver`, `CooldownTracker`, `RoutingDecisionEvent`). 79 tests passing.
 
 The gateway cannot promise a fixed quantity of free tokens. Routing only chooses among **eligible** deployments the user configured.
 

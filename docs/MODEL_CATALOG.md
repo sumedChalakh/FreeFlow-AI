@@ -1,7 +1,7 @@
 # Model catalog
 
-**Last updated:** 2026-10-29T15:14:00+05:30  
-**Status:** Design only. No discovery jobs exist.
+**Last updated:** 2026-10-31T22:30:00+05:30  
+**Status:** Unified in-memory Model Catalog service (`backend/catalog/`) implemented and verified. Models identified unambiguously by composite IDs (`<provider_id>:<model_id>`). SQLite persistence pending.
 
 ---
 
@@ -9,10 +9,10 @@
 
 | Term | Meaning |
 |---|---|
-| Model | Logical model identity (`models` table). |
-| Provider | Configured backend (`ollama`, hosted adapter, mock). |
-| Provider model / deployment | A vendor-specific ID on a provider (`provider_models`). |
-| Catalog presence | We have a metadata row. |
+| Model | Logical model identity (`models` table / `model_id`). |
+| Provider | Configured backend (`ollama`, hosted adapter, `mock`). |
+| Composite ID | `<provider_id>:<model_id>` ensuring unambiguous identification. |
+| Catalog presence | We have an aggregated catalog row (`CatalogEntry`). |
 | Eligibility | Configured + enabled + capable + allowed by health/policy. |
 
 Never equate catalog presence with “this user can call it now.”
@@ -21,16 +21,16 @@ Never equate **open weights** with **free hosted inference**. Never equate **loc
 
 ---
 
-## Discovery sources (planned)
+## Discovery sources
 
 Use official APIs only. Do not scrape HTML or undocumented endpoints when an official integration exists.
 
-| Source | What it yields | Notes |
-|---|---|---|
-| Mock adapter | Fixture models | Tests only |
-| Ollama list API | Local inventory | Mark `is_local=1` |
-| Hosted list-models APIs | Hosted catalog | Per adapter, after official-docs check |
-| Manual entry | Custom compatible endpoint | User-supplied; capabilities often unknown |
+| Source | What it yields | Status | Notes |
+|---|---|---|---|
+| Mock adapter | Fixture models | **Verified** | Tests only |
+| Ollama list API (`/api/tags`) | Local inventory | **Verified** | Marked `is_local=True` |
+| Hosted list-models APIs | Hosted catalog | Planned Phase 3 | Per adapter, after official-docs check |
+| Manual entry | Custom compatible endpoint | Planned Phase 4 | User-supplied; capabilities often unknown |
 
 First hosted sources are **not chosen** (OQ-004). When chosen, this table gets official documentation URLs.
 

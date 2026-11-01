@@ -21,4 +21,3 @@ class TestHealth:
         assert response.status_code == status.HTTP_200_OK
         # Confirm we did not send auth
         assert "Authorization" not in (client.headers or {})
-

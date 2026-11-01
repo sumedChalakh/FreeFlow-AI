@@ -1,8 +1,8 @@
 # Implementation plan
 
-**Last updated:** 2026-10-29T15:14:00+05:30  
-**Current phase:** Phase 0 — documentation baseline, **awaiting owner approval**  
-**Next approved task:** None until the owner approves this baseline. Recommended next task: Phase 1 backend skeleton (`P1-T1`).
+**Last updated:** 2026-10-31T23:22:00+05:30  
+**Current phase:** Phase 4 (Model Catalog & Persistence), Phase 5 (Routing), and Phase 6 (API) complete and verified  
+**Next approved task:** Phase 7 (Web Dashboard) or Phase 3 (Hosted Provider Integrations).
 
 Effort figures are **ranges and estimates**, not commitments. Do not silently mark a task done; require evidence in `PROJECT_STATUS.md` and tests/logs.
 
@@ -60,18 +60,18 @@ Effort figures are **ranges and estimates**, not commitments. Do not silently ma
 
 ## Phase 2 — Provider abstraction and local inference
 
-**Status:** Not started.  
+**Status:** Complete and verified (`P2-T1`, `P2-T2`, `P2-T3`, `P2-T4`, `P2-T5` all verified).  
 **Estimated effort:** 2–4 days.
 
-| ID | Task | Depends | Acceptance |
-|---|---|---|---|
-| P2-T1 | Provider adapter protocol/interface | P1 exit | Interface documented and imported by tests |
-| P2-T2 | Mock provider | P2-T1 | Deterministic success/timeout/invalid/unsupported |
-| P2-T3 | Ollama adapter | P2-T1 | Connection test + chat against local runtime when present; mocks otherwise |
-| P2-T4 | Error and response normalization | P2-T1 | Shared error categories used |
-| P2-T5 | Capability metadata | P2-T3 | Unknown capabilities labeled unknown |
+| ID | Task | Depends | Acceptance | Status |
+|---|---|---|---|---|
+| P2-T1 | Provider adapter protocol/interface | P1 exit | Interface documented and imported by tests | **Done (verified)** |
+| P2-T2 | Mock provider | P2-T1 | Deterministic success/timeout/invalid/unsupported | **Done (verified)** |
+| P2-T3 | Ollama adapter | P2-T1 | Connection test + chat against local runtime when present; mocks otherwise | **Done (verified)** |
+| P2-T4 | Error and response normalization | P2-T1 | Shared error categories used | **Done (verified)** |
+| P2-T5 | Capability metadata | P2-T3 | Unknown capabilities labeled unknown | **Done (verified)** |
 
-**Exit gate:** Requests can be routed to a local model when configured; mock tests cover success, timeout, invalid response, unsupported capability; provider logic is separate from API routes and core routing.
+**Exit gate:** Requests can be routed to a local model when configured; mock tests cover success, timeout, invalid response, unsupported capability; provider logic is separate from API routes and core routing. **(Exit gate passed; 58 tests passing).**
 
 ---
 
@@ -92,56 +92,56 @@ Effort figures are **ranges and estimates**, not commitments. Do not silently ma
 
 ---
 
-## Phase 4 — Model catalog
+## Phase 4 — Model catalog & persistence
 
-**Status:** Not started.  
+**Status:** Completed and verified (`P4-T1` through `P4-T5` verified with deterministic tests).  
 **Estimated effort:** 2–4 days.
 
-| ID | Task | Depends | Acceptance |
-|---|---|---|---|
-| P4-T1 | Catalog schema and persistence | Data model | Migrations or schema creation documented |
-| P4-T2 | Discovery where official APIs support it | P3 | Failures keep cache, mark stale |
-| P4-T3 | Local Ollama inventory | P2-T3 | Separate from hosted entries |
-| P4-T4 | Manual refresh and caching | P4-T1 | Freshness timestamp stored |
-| P4-T5 | Capability normalization | P4-T2 | Unknown fields explicit |
+| ID | Task | Depends | Acceptance | Status |
+|---|---|---|---|---|
+| P4-T1 | Catalog schema and persistence | Data model | Standard-library SQLite schema, migrations, WAL mode, degraded fallback, startup restore | **Done (verified)** |
+| P4-T2 | Discovery where official APIs support it | P2/P3 | Failures keep cache, mark stale | **Done (verified)** |
+| P4-T3 | Local Ollama inventory | P2-T3 | Separate from hosted entries via composite ID | **Done (verified)** |
+| P4-T4 | Manual refresh and caching | P4-T1/Service | Freshness timestamp stored | **Done (verified)** |
+| P4-T5 | Capability normalization | P4-T2 | Unknown fields explicit | **Done (verified)** |
 
-**Exit gate:** Models discoverable from implemented sources; stale/unknown represented; catalog entry is not automatically an eligible inference target.
+**Exit gate:** Models discoverable from implemented sources; stale/unknown represented; catalog entry is not automatically an eligible inference target; SQLite persistence preserves state across restarts and handles corrupt files gracefully. Passed on 2026-10-31.
 
 ---
 
 ## Phase 5 — Routing and automatic failover
 
-**Status:** Not started.  
+**Status:** Completed and verified (`P5-T1` through `P5-T7` verified with deterministic tests).  
 **Estimated effort:** 3–5 days.
 
-| ID | Task | Depends | Acceptance |
-|---|---|---|---|
-| P5-T1 | Explicit model selection | P4, P2 | Exact deployment used |
-| P5-T2 | `auto` routing profiles | P5-T1 | Profiles persist |
-| P5-T3 | Capability filters | P5-T1 | Vision/tools/text filters |
-| P5-T4 | Health and cooldown | P5-T1 | Temporary exclusion |
-| P5-T5 | Retry budget, backoff, `Retry-After` | P5-T4 | No infinite loops |
-| P5-T6 | Error classification | P5-T5 | Auth/context/invalid not treated as outage |
-| P5-T7 | Structured routing-decision events | P5-T1 | No prompt content stored |
+| ID | Task | Depends | Acceptance | Status |
+|---|---|---|---|---|
+| P5-T1 | Explicit model selection | P4, P2 | Exact deployment used; no silent fallback | **Done (verified)** |
+| P5-T2 | `auto` routing profiles | P5-T1 | Profiles prioritize candidates dynamically or configured | **Done (verified)** |
+| P5-T3 | Capability filters | P5-T1 | Vision/tools/streaming filters exclude incompatible backends | **Done (verified)** |
+| P5-T4 | Health and cooldown | P5-T1 | Consecutive failures trigger temporary exclusion window | **Done (verified)** |
+| P5-T5 | Retry budget, backoff, `Retry-After` | P5-T4 | Bounded retries; no infinite loops | **Done (verified)** |
+| P5-T6 | Error classification | P5-T5 | Auth/context/invalid abort immediately; only retryable failover | **Done (verified)** |
+| P5-T7 | Structured routing-decision events | P5-T1 | Telemetry audit events record metadata without prompt text | **Done (verified)** |
 
-**Exit gate:** Deterministic tests for selection and fallback; no infinite retries; streaming limitations documented; decisions inspectable without secrets/prompts.
+**Exit gate:** Deterministic tests for selection and fallback; no infinite retries; streaming limitations enforced; decisions inspectable without secrets/prompts. Passed on 2026-10-31.
 
 ---
 
 ## Phase 6 — OpenAI-compatible API
 
-**Status:** Not started.  
+**Status:** Completed and verified (`P6-T1`, `P6-T2`, `P6-T3`, `P6-T5` verified with integration tests; `P6-T4` streaming explicitly deferred and rejected with 400).  
 **Estimated effort:** 2–4 days.
 
-| ID | Task | Depends | Acceptance |
-|---|---|---|---|
-| P6-T1 | `GET /v1/models` | P4, P1-T3 | Lists eligible/configured per spec |
-| P6-T2 | `POST /v1/chat/completions` non-streaming | P5, P6-T1 | Contract tests pass |
-| P6-T3 | Error normalization | P6-T2 | Stable error shape |
-| P6-T4 | Streaming | P6-T2 + failure design | Only after non-streaming is tested |
-| P6-T5 | IDE/client setup docs | P6-T2 | Compatible-client instructions |
+| ID | Task | Depends | Acceptance | Status |
+|---|---|---|---|---|
+| P6-T1 | `GET /v1/models` | P4, P1-T3 | Lists aliases, profiles, and discovered catalog models | **Done (verified)** |
+| P6-T2 | `POST /v1/chat/completions` non-streaming | P5, P6-T1 | OpenAI-compatible non-streaming chat completions | **Done (verified)** |
+| P6-T3 | Error normalization | P6-T2 | Stable OpenAI error envelopes (`message`, `type`, `code`, `param`) | **Done (verified)** |
+| P6-T4 | Streaming | P6-T2 + failure design | Explicitly unsupported in this slice; rejected honestly with 400 | **Deferred (honestly rejected)** |
+| P6-T5 | IDE/client setup docs | P6-T2 | Compatible-client configuration instructions | **Done (verified)** |
 
-**Exit gate:** Compatible client can succeed; tests cover success and failure; compatibility limits documented; bound to loopback by default.
+**Exit gate:** Compatible client can succeed; tests cover success and failure; compatibility limits documented; bound to loopback by default. Passed on 2026-10-31.
 
 ---
 

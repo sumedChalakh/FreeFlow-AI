@@ -1,12 +1,79 @@
 # Data model
 
-**Last updated:** 2026-10-29T15:14:00+05:30  
-**Status:** Proposed SQLite schema for MVP. Not created in the repository yet.  
-**Storage engine:** SQLite (file path from configuration).
+**Last updated:** 2026-10-31T23:22:00+05:30  
+**Status:** SQLite schema v1 implemented and verified in `backend/db/`.  
+**Storage engine:** Standard-library SQLite (`sqlite3`) in WAL mode (`PRAGMA journal_mode = WAL`).
 
 Do not store raw API keys in ordinary tables as plaintext. If a secure store is not implemented, keep credential writes disabled.
 
 Do not persist prompt or response bodies by default.
+
+---
+
+## Implemented Schema (v1)
+
+FreeFlow AI uses SQLite with `PRAGMA user_version` migrations managed by `backend/db/schema.py` and `backend/db/connection.py`.
+
+### Performance and Safety Pragmas
+- `PRAGMA journal_mode = WAL;` (Write-Ahead Logging for concurrent read/write throughput).
+- `PRAGMA synchronous = NORMAL;`
+- `PRAGMA foreign_keys = ON;`
+- `PRAGMA busy_timeout = 5000;` (5-second lock wait timeout).
+- Thread synchronization via `threading.Lock` across worker thread dispatches (`asyncio.to_thread`).
+
+### Tables in Migration v1
+
+#### 1. `providers`
+Stores non-secret provider configuration. API keys and bearer tokens are never persisted here.
+```sql
+CREATE TABLE IF NOT EXISTS providers (
+    id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    base_url TEXT,
+    credential_ref TEXT,
+    extra_config_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+```
+
+#### 2. `catalog_models`
+Stores normalized discovered models per provider. Discovered models start with `is_stale = 0`. Upon restart, all restored models start with `is_stale = 1` until fresh discovery runs.
+```sql
+CREATE TABLE IF NOT EXISTS catalog_models (
+    composite_id TEXT PRIMARY KEY,
+    provider_id TEXT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    model_id TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    is_local INTEGER NOT NULL,
+    supports_streaming INTEGER,
+    supports_vision INTEGER,
+    supports_tools INTEGER,
+    context_length INTEGER,
+    max_output_tokens INTEGER,
+    raw_metadata_json TEXT,
+    discovered_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    is_stale INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_catalog_models_provider ON catalog_models(provider_id);
+CREATE INDEX IF NOT EXISTS idx_catalog_models_stale ON catalog_models(is_stale);
+```
+
+#### 3. `routing_profiles`
+Persists user-customized routing profiles so customized candidate lists, retries, and timeouts survive server restarts.
+```sql
+CREATE TABLE IF NOT EXISTS routing_profiles (
+    name TEXT PRIMARY KEY,
+    description TEXT NOT NULL,
+    candidates_json TEXT NOT NULL,
+    max_retries INTEGER NOT NULL DEFAULT 2,
+    timeout_seconds REAL NOT NULL DEFAULT 30.0,
+    required_capabilities_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+```
 
 ---
 

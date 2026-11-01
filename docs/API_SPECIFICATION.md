@@ -1,10 +1,10 @@
 # API specification
 
-**Last updated:** 2026-10-29T15:14:00+05:30  
-**Status:** Proposed endpoints. **Not implemented.** Schemas will be finalized before coding each route.
+**Last updated:** 2026-10-31T23:06:00+05:30  
+**Status:** Core OpenAI-compatible endpoints (`GET /v1/models`, `POST /v1/chat/completions`) and health (`GET /health`) implemented and verified. Streaming explicitly rejected with 400. Dashboard endpoints planned.
 
-Base URL (proposed): `http://127.0.0.1:8787`  
-Default bind: loopback only.
+Base URL (default): `http://127.0.0.1:8000` (configured via `FREEFLOW_API_HOST` and `FREEFLOW_API_PORT`)  
+Default bind: loopback only (`127.0.0.1`).
 
 ---
 
