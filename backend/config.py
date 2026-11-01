@@ -1,17 +1,21 @@
-pyrefly: ignore[missing-import]
-from pydantic_settings import BaseSettings
+# pyrefly: ignore[missing-import]
 from pydantic import Field
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
-    api_host: str = Field('127.0.0.1', description='Bind address, loopback by default')
-    api_port: int = Field(8000, ge=1, le=65535, description='Port to listen on')
-    api_token: str = Field('', description='Secret token for authentication')
-    log_level: str = Field('INFO', description='Logging level')
+    """Application settings loaded from environment variables with FREEFLOW_ prefix."""
 
-    class Config:
-        env_file = '.env'
-        case_sensitive = False
+    api_host: str = Field("127.0.0.1", description="Bind address, loopback by default")
+    api_port: int = Field(8000, ge=1, le=65535, description="Port to listen on")
+    api_token: str = Field("", description="Secret token for authentication")
+    log_level: str = Field("INFO", description="Logging level")
 
+    model_config = {
+        "env_file": ".env",
+        "env_prefix": "FREEFLOW_",
+        "case_sensitive": False,
+    }
 
 
 settings = Settings()

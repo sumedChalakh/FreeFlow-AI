@@ -52,6 +52,9 @@ Desktop.ini
 # Cursor / agent local
 .cursor/debug.log
 
+# Impeccable design tool (local workflow settings)
+.impeccable/
+
 # Test and coverage artifacts
 coverage/
 playwright-report/

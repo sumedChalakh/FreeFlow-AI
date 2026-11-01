@@ -1,13 +1,15 @@
 # Backend FastAPI application for FreeFlow AI
 
 import secrets
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import settings
 from .logger import logger
 
 app = FastAPI(title="FreeFlow AI Backend", version="0.1.0")
+
 
 # Health endpoint (unauthenticated)
 @app.get("/health", summary="Health check")
@@ -15,10 +17,14 @@ async def health():
     logger.info("Health endpoint called")
     return {"status": "ok"}
 
+
 # Simple token auth dependency
 security = HTTPBearer(auto_error=False)
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+
+def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),  # noqa: B008
+):
     if credentials is None:
         logger.warning("Missing auth credentials")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
@@ -35,6 +41,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         logger.warning("Invalid token provided")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return token
+
 
 # Protected test endpoint
 @app.get("/protected", summary="Protected test endpoint")
