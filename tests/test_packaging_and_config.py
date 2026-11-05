@@ -60,10 +60,11 @@ def test_dockerfile_structure_and_security():
     assert 'VOLUME ["/data"]' in content
     assert "FREEFLOW_DB_PATH=/data/freeflow.db" in content
 
-    # Port and healthcheck
+    # Port, healthcheck, and runtime path
     assert "EXPOSE 8000" in content
     assert "HEALTHCHECK" in content
     assert "/health" in content
+    assert 'ENV PATH="/app/.venv/bin:$PATH"' in content
 
 
 def test_dockerignore_excludes_secrets_and_ephemeral():
