@@ -1,7 +1,7 @@
 # File map
 
-**Last updated:** 2026-11-05T19:45:00+05:30  
-**Status:** Inventory of repository with backend skeleton, provider adapters, Model Catalog, Routing Engine, OpenAI API, SQLite persistence, authenticated management API, Web Dashboard, and reliability/security audit suite.
+**Last updated:** 2026-11-05T19:55:00+05:30  
+**Status:** Inventory of repository with backend skeleton, provider adapters, Model Catalog, Routing Engine, OpenAI API, SQLite persistence, authenticated management API, Web Dashboard, Docker packaging, and GitHub Actions CI.
 
 Update this file whenever files or folders are added, removed, moved, or change responsibility.
 
@@ -12,10 +12,13 @@ Update this file whenever files or folders are added, removed, moved, or change 
 | Path | Responsibility | Related docs |
 |---|---|---|
 | `AGENTS.md` | Mandatory agent protocol | This workflow |
-| `README.md` | Human project summary | Product overview |
+| `README.md` | Comprehensive project overview, architecture, quickstart, API reference, verification | Product overview |
 | `PRODUCT.md` | Durable product context for design tooling | Product truth |
+| `Dockerfile` | Multi-stage Python 3.12-slim production container with non-root security and volume mounts | Deploy |
+| `.dockerignore` | Build context ignore rules excluding caches, virtualenvs, credentials, and databases | Deploy |
+| `.github/workflows/ci.yml` | GitHub Actions multi-OS CI workflow matrix (Ubuntu + Windows) | CI/CD |
 | `.gitignore` | Ignore secrets, venvs, node_modules, DBs, `.impeccable/` | Security |
-| `.env.example` | Placeholder env names only (`FREEFLOW_` prefix) | Setup, security |
+| `.env.example` | Placeholder environment variables with `FREEFLOW_` prefix | Setup, security |
 | `FreeFlow_AI_Project_Plan_for_Cursor.md` | Owner-supplied original plan (historical) | Do not treat as live status |
 | `pyproject.toml` | Package metadata, dependencies, tool config (ruff, mypy, pytest) | Setup |
 | `uv.lock` | Locked dependency versions | Setup |
@@ -67,6 +70,7 @@ Update this file whenever files or folders are added, removed, moved, or change 
 | `tests/test_ollama.py` | Ollama discovery, health, chat, and capability tests (21 tests) | Testing, providers |
 | `tests/test_routing.py` | Routing engine, failover, cooldown, and telemetry tests (11 tests) | Testing, routing |
 | `tests/test_reliability_and_security.py` | Reliability, timeout override, exception containment, 500 mapping, input bounds, sanitization, and shutdown tests (12 tests) | Testing, Security, Reliability |
+| `tests/test_packaging_and_config.py` | Configuration defaults, environment overrides, Dockerfile structure, and CI workflow tests (6 tests) | Testing, Setup, CI/CD |
 | `docs/README.md` | Documentation map | All docs |
 | `docs/PRODUCT_REQUIREMENTS.md` | FR/NFR | Requirements |
 | `docs/IMPLEMENTATION_PLAN.md` | Phases and task IDs | Plan |

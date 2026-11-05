@@ -39,7 +39,12 @@ async def lifespan(app: FastAPI):
     if default_registry.get("ollama") is None:
         from backend.providers.ollama import OllamaAdapter
 
-        default_registry.register(OllamaAdapter(adapter_id="ollama"))
+        default_registry.register(
+            OllamaAdapter(
+                adapter_id="ollama",
+                default_base_url=settings.ollama_base_url,
+            )
+        )
 
     # 3. Restore persisted provider configurations without credentials
     try:

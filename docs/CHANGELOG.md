@@ -1,8 +1,34 @@
 # Changelog
 
-**Last updated:** 2026-11-05T19:45:00+05:30  
+**Last updated:** 2026-11-05T19:55:00+05:30  
 
 Timestamped significant changes. Do not paste full diffs. Use real Asia/Kolkata times.
+
+---
+
+## 2026-11-05T19:55:00+05:30 — Phase 9: Packaging, Distribution, CI/CD & Portfolio Release
+
+**Summary:** Completed packaging, reproducibility, CI/CD automation, and portfolio release preparation for FreeFlow AI. Added production-conscious multi-stage `Dockerfile` with non-root user execution (`freeflow:freeflow`, UID 1000), volume persistence (`/data`), healthcheck instruction using standard library `urllib.request` against `/health`, and deterministic `uv` dependency installation; added `.dockerignore` excluding ephemeral caches, virtualenvs, credentials, and databases; added multi-OS GitHub Actions workflow ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) testing across `ubuntu-latest` and `windows-latest` on Python 3.12 with dependency caching and least-privilege permissions; updated `pyproject.toml` declaring `httpx>=0.27.0` directly in runtime dependencies; added `ollama_base_url` configuration setting in `backend/config.py` enabling containerized instances to reach host Ollama daemons via `FREEFLOW_OLLAMA_BASE_URL`; created comprehensive operational and deployment guide in `docs/DEPLOYMENT.md`; significantly enriched `README.md` with full architecture diagrams, request lifecycle explanations, cURL examples, Docker Compose instructions, and honest limitation disclosures; conducted dependency licensing audit verifying all direct and indirect dependencies as permissive (MIT, BSD-3, Apache-2.0); verified with 6 new automated tests in `tests/test_packaging_and_config.py` (167 tests total across 13 test files).
+
+**Changed areas / files:**
+
+- Created `Dockerfile`: Multi-stage Python 3.12-slim-bookworm container with `uv`, non-root user `freeflow`, declared volume `/data` for SQLite persistence, internal loopback healthcheck, and uvicorn entrypoint.
+- Created `.dockerignore`: Filtered out Git, virtualenvs, local `.env` files, SQLite databases, caches, test suites, and internal scratch directories.
+- Created `.github/workflows/ci.yml`: GitHub Actions workflow with `contents: read` permissions, testing Ruff linting, Ruff formatting, Mypy type-checking, and full pytest execution across `ubuntu-latest` and `windows-latest`.
+- Modified `pyproject.toml`: Added `httpx>=0.27.0` explicitly to runtime `dependencies`.
+- Modified `backend/config.py`: Added `ollama_base_url` setting with `FREEFLOW_` prefix support (`FREEFLOW_OLLAMA_BASE_URL`).
+- Modified `backend/main.py`: Initialized default `OllamaAdapter` using `settings.ollama_base_url`.
+- Modified `.env.example`: Updated with accurate setting names (`FREEFLOW_DB_PATH`, `FREEFLOW_API_PORT=8000`, `FREEFLOW_OLLAMA_BASE_URL`).
+- Modified `docs/DEPLOYMENT.md`: Comprehensive operational manual covering native deployment, containerized Docker deployment, loopback host publishing (`-p 127.0.0.1:8000:8000`), host Ollama networking across platforms, Docker Compose configuration, WAL backup, and forensic corruption recovery.
+- Modified `README.md`: Major portfolio enrichment with architecture diagrams, request lifecycle explanations, cURL examples, Docker Compose instructions, verification status, and verified limitations.
+- Created `tests/test_packaging_and_config.py`: Added 6 automated tests validating configuration defaults, environment overrides, custom Ollama base URL, Dockerfile security directives, `.dockerignore` filters, and CI workflow matrix structure.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+**User-visible impact:** Developers and operators can now run FreeFlow AI natively or via Docker with durable database persistence, easily point containerized instances to host Ollama models, verify builds across Linux and Windows in CI, and review clean documentation and API examples.
+
+**Technical impact:** Test suite expanded from 161 to 167 tests across 13 test files. Pytest, Ruff linting, Ruff formatting, and Mypy type checks pass cleanly with zero regressions.
+
+**Tests run and result:** `uv run pytest -v` (167 passed in 3.85s); `uv run ruff check .` (exit 0); `uv run ruff format --check .` (exit 0); `uv run mypy .` (exit 0).
 
 ---
 

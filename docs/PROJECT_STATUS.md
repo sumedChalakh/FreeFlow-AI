@@ -1,8 +1,8 @@
 # Project status
 
-**Last updated:** 2026-11-05T19:45:00+05:30  
-**Current milestone:** Phase 8: Reliability, Security Hardening & Usability Audit (verified; 161 tests passing)  
-**Latest session log:** [`SESSION_LOG.md`](SESSION_LOG.md) entry `2026-11-05T19:45:00+05:30`
+**Last updated:** 2026-11-05T19:55:00+05:30  
+**Current milestone:** Phase 9: Packaging, Distribution, CI/CD & Portfolio Release (verified; 167 tests passing)  
+**Latest session log:** [`SESSION_LOG.md`](SESSION_LOG.md) entry `2026-11-05T19:55:00+05:30`
 
 ---
 
@@ -13,8 +13,8 @@
 | Product name | FreeFlow AI (provisional) |
 | Application code | Backend API (`backend/api/`, `backend/management/`, `backend/dashboard/`, `backend/main.py`), Routing (`backend/routing/`), Catalog (`backend/catalog/`), Persistence (`backend/db/`), Providers (`backend/providers/`) |
 | Git | Initialized, branch `main`, remote `origin` configured |
-| Tests | 161 passed (`pytest`); ruff, mypy clean |
-| License | Unchosen |
+| Tests | 167 passed (`pytest`); ruff, mypy clean |
+| License | Provisional (OQ-001 open) |
 | Blockers | Open questions OQ-001 (license), OQ-004 (hosted providers), OQ-005 (credential storage) |
 
 ---
@@ -106,7 +106,13 @@
   - Request validation limits: added bounds on `model` (max 256), `role` (max 64), and `name` (max 64) against memory bloat.
   - Graceful shutdown lifecycle: `ProviderRegistry.aclose()` and `OllamaAdapter.aclose()` cleanly terminate underlying HTTP sessions on app lifespan shutdown before database closure.
   - Dashboard usability hardening: added redundant view switch guards preventing double-renders on hash changes, and `:focus-visible` styling for sidebar links to ensure keyboard accessibility.
-- **Tests:** 161 tests across 12 test files (API v1, management API, dashboard shell/providers/catalog/profiles/diagnostics, persistence, health, auth, logging/redaction, mock provider, ollama adapter, model catalog, routing engine, reliability and security audit). All pass deterministically without external dependencies or internet access.
+- **Packaging, Distribution, CI/CD & Portfolio Release (Phase 9):**
+  - Production `Dockerfile`: multi-stage Python 3.12-slim build with non-root security (`freeflow:freeflow`, UID 1000), volume persistence (`/data`), healthcheck instruction using Python `urllib.request` against `/health`, and deterministic `uv` dependency installation.
+  - Local-first network isolation: documented host loopback publishing (`-p 127.0.0.1:8000:8000`) and Ollama host connectivity via `FREEFLOW_OLLAMA_BASE_URL=http://host.docker.internal:11434`.
+  - Docker Compose operational template in [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) with volume mounts, environment templates, and healthchecks.
+  - Multi-OS GitHub Actions CI matrix ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) testing across `ubuntu-latest` and `windows-latest` with dependency caching and least-privilege permissions.
+  - Licensing audit: dependency licenses verified as permissive (MIT, BSD-3, Apache-2.0); project license held as provisional pending owner decision (OQ-001).
+- **Tests:** 167 tests across 13 test files (API v1, management API, dashboard shell/providers/catalog/profiles/diagnostics, persistence, health, auth, logging/redaction, mock provider, ollama adapter, model catalog, routing engine, reliability and security audit, packaging and config). All pass deterministically without external dependencies or internet access.
 
 ---
 
@@ -120,8 +126,7 @@
 
 - Hosted provider integrations (Phase 3).
 - Settings dashboard view and runtime routing profile editing.
-- Packaging and portfolio release (Phase 9).
-- LICENSE.
+- LICENSE (OQ-001 awaiting project owner decision).
 
 ---
 
@@ -134,14 +139,14 @@
 
 ## Latest test status
 
-**Run on 2026-11-05T19:45:00+05:30:**
+**Run on 2026-11-05T19:55:00+05:30:**
 
 | Tool | Command | Result |
 |---|---|---|
-| pytest | `uv run pytest -v` | 161 passed in 4.24s (exit 0) |
+| pytest | `uv run pytest -v` | 167 passed in 3.85s (exit 0) |
 | ruff lint | `uv run ruff check .` | All checks passed (exit 0) |
-| ruff format | `uv run ruff format --check .` | 165 files already formatted (exit 0) |
-| mypy | `uv run mypy .` | Success: no issues found in 45 source files (exit 0) |
+| ruff format | `uv run ruff format --check .` | 166 files already formatted (exit 0) |
+| mypy | `uv run mypy .` | Success: no issues found in 46 source files (exit 0) |
 
 ---
 
@@ -156,8 +161,8 @@ Full list: [`RISKS_AND_OPEN_QUESTIONS.md`](RISKS_AND_OPEN_QUESTIONS.md).
 
 ## Next 1–3 recommended tasks
 
-1. Review Phase 3: First Hosted Provider Integration (upon decision on OQ-004 and OQ-005).
-2. Implement Phase 9: Packaging, Distribution & Portfolio Release (Docker, CI workflow, distribution docs).
+1. Owner review and decision on OQ-001 (License selection) and OQ-004 / OQ-005 (Hosted providers & credential store).
+2. Implement Phase 3: First Hosted Provider Integration.
 3. Implement Dashboard Settings & Runtime Profile Configuration (if requested by owner).
 
 ---

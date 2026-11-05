@@ -1,8 +1,50 @@
 # Session log
 
-**Last updated:** 2026-11-05T19:45:00+05:30  
+**Last updated:** 2026-11-05T19:55:00+05:30  
 
 Append-only. Correct factual errors with a new dated note, do not silently rewrite history.
+
+---
+
+## 2026-11-05T19:55:00+05:30 — Phase 9: Packaging, Distribution, CI/CD & Portfolio Release
+
+- **Start:** 2026-11-05T19:48:00+05:30
+- **End:** 2026-11-05T19:55:00+05:30
+- **Objective:** Prepare FreeFlow AI for reproducible packaging, automated continuous integration, containerized distribution, and portfolio presentation while preserving the local-first security architecture and existing passing test suite.
+
+### Files modified / created
+
+- Created `Dockerfile` — Multi-stage production container based on `python:3.12-slim-bookworm` with `uv`, non-root user `freeflow:freeflow` (UID 1000), volume mount at `/data` for SQLite persistence, internal loopback healthcheck, and uvicorn startup.
+- Created `.dockerignore` — Excluded Git, virtual environments, local `.env` files, SQLite databases and WAL files, caches, tests, and documentation.
+- Created `.github/workflows/ci.yml` — Multi-OS CI workflow matrix (`ubuntu-latest`, `windows-latest`) on Python 3.12 running Ruff linting, Ruff format check, Mypy type-checking, and full Pytest execution with `contents: read` permissions.
+- Modified `pyproject.toml` — Added `httpx>=0.27.0` explicitly to runtime `dependencies`.
+- Modified `backend/config.py` — Added `ollama_base_url` setting with `FREEFLOW_` prefix support (`FREEFLOW_OLLAMA_BASE_URL`).
+- Modified `backend/main.py` — Initialized default `OllamaAdapter` using `settings.ollama_base_url`.
+- Modified `.env.example` — Synchronized variable names with backend Settings (`FREEFLOW_DB_PATH`, `FREEFLOW_API_PORT=8000`, `FREEFLOW_OLLAMA_BASE_URL`).
+- Modified `docs/DEPLOYMENT.md` — Replaced stub with full production guide covering native setup, containerized Docker deployment, loopback host publishing (`-p 127.0.0.1:8000:8000`), host Ollama networking across platforms, Docker Compose configuration, WAL backup, and forensic corruption recovery.
+- Modified `README.md` — Portfolio-grade presentation with complete architecture diagrams, request lifecycle explanations, cURL examples, Docker instructions, test metrics, and verified limitations.
+- Created `tests/test_packaging_and_config.py` — Added 6 automated tests validating configuration defaults, environment overrides, custom Ollama base URL, Dockerfile security directives, `.dockerignore` filters, and CI workflow matrix structure.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+### Decisions
+
+- Container user: created dedicated non-root user `freeflow` (UID 1000) and gave it ownership of `/app` and `/data` to prevent running as root inside containers.
+- Container health check: implemented via Python standard library `urllib.request` directly against `http://127.0.0.1:8000/health`, avoiding the need to install external packages like `curl` in the slim image.
+- Host publishing: default Docker documentation strictly specifies publishing to host loopback (`-p 127.0.0.1:8000:8000`) rather than `0.0.0.0`, preserving the local-first security boundary.
+- Container Ollama access: added `ollama_base_url` to `backend/config.py` so containerized instances can connect to host Ollama instances via `FREEFLOW_OLLAMA_BASE_URL=http://host.docker.internal:11434`.
+- CI Matrix: configured GitHub Actions for both Ubuntu and Windows on Python 3.12 with dependency caching and least-privilege `contents: read` permissions.
+- Licensing gate: audited all runtime and dev dependencies; verified all use permissive licenses (MIT, BSD-3, Apache-2.0). Held repository license as provisional pending owner decision on OQ-001.
+
+### Commands run and actual results
+
+1. `uv run pytest -v` (full test suite) → **167 passed in 3.85s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format --check .` → **166 files already formatted** (exit 0)
+4. `uv run mypy .` → **Success: no issues found in 46 source files** (exit 0)
+
+### Next steps
+
+- Project owner review and decision on OQ-001 (License selection) and OQ-004 / OQ-005 to prepare for Phase 3 (Hosted Provider Integrations).
 
 ---
 

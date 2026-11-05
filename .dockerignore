@@ -1,0 +1,26 @@
+# FreeFlow AI — Docker Ignore Rules
+.git/
+.gitignore
+.github/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.db
+*.db-wal
+*.db-shm
+*.corrupt.*
+.env
+.env.*
+!.env.example
+tests/
+docs/
+scratch/
+*.md
+!README.md
