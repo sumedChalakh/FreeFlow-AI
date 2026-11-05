@@ -1,8 +1,25 @@
 # Changelog
 
-**Last updated:** 2026-11-05T19:55:00+05:30  
+**Last updated:** 2026-11-05T20:15:00+05:30  
 
 Timestamped significant changes. Do not paste full diffs. Use real Asia/Kolkata times.
+
+---
+
+## 2026-11-05T20:15:00+05:30 — Phase 9: Verification Audit & Docker Runtime Hardening
+
+**Summary:** Completed systematic Phase 9 verification audit. Detected that Docker Desktop daemon is active on the host (`Docker version 29.6.2`). Executed real runtime container build and lifecycle verification: resolved a build permissions issue where `uv sync` executed during image build as root created `freeflow_ai.egg-info` with root ownership, preventing the non-root `freeflow` user from updating timestamps at startup; switched build stage to `USER freeflow` with `ENV PATH="/app/.venv/bin:$PATH"` and invoked `/app/.venv/bin/uvicorn` directly in `ENTRYPOINT`. Successfully built `freeflow-ai:test`, started container with persistent volume, verified non-root execution (`uid=1000(freeflow)`), verified health check (`/health` returned 200 with WAL database status), verified `/data` volume write permissions, created test SQLite data and marker file, stopped and removed container, recreated with identical volume, and verified 100% data preservation across recreation. Clarified Docker Compose documentation in `README.md` and `docs/DEPLOYMENT.md` noting that Compose is a reference template (no standalone `docker-compose.yml` pre-checked into repo root). All 167 automated unit/integration tests pass, Ruff check clean, Ruff format clean, Mypy clean.
+
+**Changed areas / files:**
+- Modified `Dockerfile`: Switched to `USER freeflow` before virtual environment sync so package metadata and virtual environment files are strictly owned by UID 1000; configured `ENV PATH="/app/.venv/bin:$PATH"`; updated `ENTRYPOINT` to execute `uvicorn` directly.
+- Modified `tests/test_packaging_and_config.py`: Added assertions verifying `ENV PATH="/app/.venv/bin:$PATH"` in Dockerfile.
+- Modified `README.md`: Clarified that Docker Compose is a reference template in `docs/DEPLOYMENT.md`.
+- Modified `docs/DEPLOYMENT.md`: Clarified that `docker-compose.yml` is not checked into the repository root by default and provided the reference configuration.
+- Updated `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`, `docs/PROJECT_STATUS.md`.
+
+**User-visible impact:** Operators can build and run the Docker image seamlessly as non-root UID 1000 without permission errors; SQLite data in `/data` volume reliably survives container recreation.
+
+**Technical impact:** Real runtime container verification executed and confirmed; all 167 automated tests passing; static analysis clean.
 
 ---
 
