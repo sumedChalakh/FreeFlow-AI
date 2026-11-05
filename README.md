@@ -174,7 +174,7 @@ docker run -d \
 > [!IMPORTANT]
 > Always publish to host loopback (`-p 127.0.0.1:8000:8000`), never `-p 8000:8000`, to preserve local-first network security.
 
-Detailed operational instructions, Linux host gateway configuration, and Docker Compose files: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+Detailed operational instructions, Linux host gateway configuration, and Docker Compose reference template: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ---
 
