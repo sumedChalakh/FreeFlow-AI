@@ -99,7 +99,7 @@ docker run -d \
 ```
 
 ### Running with Docker Compose
-Create a `docker-compose.yml` file:
+A `docker-compose.yml` file is not checked into the repository root by default. To run with Docker Compose, create a `docker-compose.yml` file using this reference configuration:
 ```yaml
 version: '3.8'
 
