@@ -98,9 +98,7 @@ class ProviderRefreshSummary(BaseModel):
     provider_id: str = Field(..., description="Provider identifier")
     success: bool = Field(..., description="Whether discovery succeeded")
     models_count: int = Field(..., description="Number of models discovered or retained")
-    error: str | None = Field(
-        default=None, description="Sanitized error message if refresh failed"
-    )
+    error: str | None = Field(default=None, description="Sanitized error message if refresh failed")
     timestamp: float = Field(..., description="Unix timestamp of refresh execution")
 
 
@@ -166,6 +164,4 @@ class GatewayDiagnosticsResponse(BaseModel):
     stale_models_count: int = Field(
         ..., description="Count of models marked stale awaiting refresh"
     )
-    routing_profiles_count: int = Field(
-        ..., description="Total count of active routing profiles"
-    )
+    routing_profiles_count: int = Field(..., description="Total count of active routing profiles")

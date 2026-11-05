@@ -7,11 +7,14 @@ Manages database initialization, catalog restoration, and honest degraded mode r
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.api import register_error_handlers, v1_router
 from backend.api.deps import verify_token
 from backend.catalog.service import default_catalog
 from backend.config import settings
+from backend.dashboard import dashboard_router
+from backend.dashboard.routes import STATIC_DIR
 from backend.db import CatalogRepository, DatabaseManager
 from backend.logger import logger
 from backend.management import management_router
@@ -73,7 +76,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown: clean up database connections
+    # Shutdown: clean up provider adapters and database connections
+    await default_registry.aclose()
     db_mgr.close()
 
 
@@ -87,6 +91,10 @@ app.include_router(v1_router)
 
 # Mount authenticated Management API router
 app.include_router(management_router)
+
+# Mount Dashboard static assets and router
+app.mount("/dashboard/static", StaticFiles(directory=str(STATIC_DIR)), name="dashboard_static")
+app.include_router(dashboard_router)
 
 
 # Health endpoint (unauthenticated)

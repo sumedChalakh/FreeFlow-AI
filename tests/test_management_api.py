@@ -362,9 +362,7 @@ async def test_get_catalog_and_refresh_workflow(mgmt_setup):
     assert filtered_models[0]["composite_id"] == "mock:mock-model-1"
 
     # 4. Refresh single provider
-    single_res = client.post(
-        "/api/catalog/refresh", headers=headers, json={"provider_id": "mock"}
-    )
+    single_res = client.post("/api/catalog/refresh", headers=headers, json={"provider_id": "mock"})
     assert single_res.status_code == status.HTTP_200_OK
     single_data = single_res.json()
     assert single_data["total_refreshed"] == 1

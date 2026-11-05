@@ -1,7 +1,7 @@
 # File map
 
-**Last updated:** 2026-10-31T23:22:00+05:30  
-**Status:** Inventory of repository with backend skeleton, provider adapters, Model Catalog, Routing Engine, OpenAI API, and SQLite persistence.
+**Last updated:** 2026-11-05T19:45:00+05:30  
+**Status:** Inventory of repository with backend skeleton, provider adapters, Model Catalog, Routing Engine, OpenAI API, SQLite persistence, authenticated management API, Web Dashboard, and reliability/security audit suite.
 
 Update this file whenever files or folders are added, removed, moved, or change responsibility.
 
@@ -20,12 +20,20 @@ Update this file whenever files or folders are added, removed, moved, or change 
 | `pyproject.toml` | Package metadata, dependencies, tool config (ruff, mypy, pytest) | Setup |
 | `uv.lock` | Locked dependency versions | Setup |
 | `backend/__init__.py` | Backend package init | Architecture |
-| `backend/main.py` | FastAPI app, `/health`, `/protected`, `/v1` mounting, DB lifespan | API, security, persistence |
+| `backend/main.py` | FastAPI app, `/health`, `/protected`, `/v1`, `/api` mounting, DB lifespan | API, security, persistence |
 | `backend/api/__init__.py` | OpenAI API package exports | API |
-| `backend/api/deps.py` | FastAPI dependencies (catalog, engine, token auth) | API |
+| `backend/api/deps.py` | FastAPI dependencies (catalog, engine, token auth, registry, db) | API |
 | `backend/api/errors.py` | OpenAI error handlers and exception mapping | API |
 | `backend/api/models.py` | OpenAI-compatible request and response Pydantic models | API |
 | `backend/api/routes.py` | OpenAI v1 endpoints (`/v1/models`, `/v1/chat/completions`) | API |
+| `backend/management/__init__.py` | Management API package exports | API |
+| `backend/management/models.py` | Management API Pydantic schemas (providers, catalog, profiles, diagnostics) | API |
+| `backend/management/routes.py` | Authenticated `/api/*` management endpoints | API |
+| `backend/dashboard/__init__.py` | Web Dashboard package exports | Frontend |
+| `backend/dashboard/routes.py` | Web Dashboard route handlers (`/dashboard`, `/` redirect) | Frontend |
+| `backend/dashboard/templates/dashboard.html` | Web Dashboard application shell HTML template | Frontend |
+| `backend/dashboard/static/dashboard.css` | Web Dashboard dark-first stylesheet | Frontend |
+| `backend/dashboard/static/dashboard.js` | Web Dashboard client-side controller | Frontend |
 | `backend/config.py` | `pydantic-settings` config with `FREEFLOW_` prefix & DB path | Setup, security |
 | `backend/logger.py` | `structlog` logger with `SecretRedactor` processor | Security, logging |
 | `backend/catalog/__init__.py` | Model Catalog package exports | Catalog |
@@ -48,14 +56,17 @@ Update this file whenever files or folders are added, removed, moved, or change 
 | `backend/providers/registry.py` | Decoupled adapter registry | Providers |
 | `tests/conftest.py` | Shared pytest fixtures (`TestClient`) | Testing |
 | `tests/test_api_v1.py` | OpenAI v1 API endpoints, auth, and error tests (12 tests) | Testing, API |
+| `tests/test_management_api.py` | Management `/api` endpoints, auth, and sanitization tests (15 tests) | Testing, API |
+| `tests/test_dashboard.py` | Web Dashboard routing, shell, navigation, provider probe, catalog explorer, routing profiles, and diagnostics inspector tests (29 tests) | Testing, Frontend |
 | `tests/test_catalog.py` | Model Catalog aggregation, fault isolation, and filtering tests (10 tests) | Testing, catalog |
-| `tests/test_persistence.py` | SQLite schema, startup restoration, stale reconciliation, concurrency tests (9 tests) | Testing, persistence |
+| `tests/test_persistence.py` | SQLite schema, startup restoration, stale reconciliation, concurrency tests (14 tests) | Testing, persistence |
 | `tests/test_health.py` | Health endpoint tests (3 tests) | Testing, API |
 | `tests/test_auth.py` | Auth rejection and success tests (6 tests) | Testing, security |
 | `tests/test_logging.py` | Secret redaction tests (9 tests) | Testing, security |
 | `tests/test_providers.py` | Provider abstraction, mock, error, and registry tests (19 tests) | Testing, providers |
 | `tests/test_ollama.py` | Ollama discovery, health, chat, and capability tests (21 tests) | Testing, providers |
 | `tests/test_routing.py` | Routing engine, failover, cooldown, and telemetry tests (11 tests) | Testing, routing |
+| `tests/test_reliability_and_security.py` | Reliability, timeout override, exception containment, 500 mapping, input bounds, sanitization, and shutdown tests (12 tests) | Testing, Security, Reliability |
 | `docs/README.md` | Documentation map | All docs |
 | `docs/PRODUCT_REQUIREMENTS.md` | FR/NFR | Requirements |
 | `docs/IMPLEMENTATION_PLAN.md` | Phases and task IDs | Plan |

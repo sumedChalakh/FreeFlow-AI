@@ -5,6 +5,7 @@ capability verification, and safe failover on retryable provider errors.
 Produces structured telemetry decision events without logging prompt or message contents.
 """
 
+import asyncio
 import time
 from collections.abc import Callable
 
@@ -308,6 +309,8 @@ class RoutingEngine:
             # Execute with candidate-specific model ID
             cand_request = request.model_copy(update={"model": candidate.model_id})
             ctx = self._catalog.get_provider_context(candidate.provider_id)
+            if profile is not None and profile.timeout_seconds is not None:
+                ctx = ctx.model_copy(update={"timeout_seconds": profile.timeout_seconds})
 
             try:
                 response = await adapter.complete_chat(ctx, cand_request)
@@ -360,6 +363,10 @@ class RoutingEngine:
                 )
                 return response, event
 
+            except asyncio.CancelledError:
+                # Preserve cancellation without swallowing
+                raise
+
             except ProviderError as exc:
                 cand_duration = (self._clock() - attempt_start) * 1000.0
                 self._cooldown.record_failure(candidate.composite_id, exc)
@@ -404,6 +411,45 @@ class RoutingEngine:
                     deployment=candidate.composite_id,
                     attempt=attempt_number,
                     error=exc.message,
+                )
+
+            except Exception as exc:
+                # Contain unexpected non-ProviderError adapter crashes; treat as retryable
+                cand_duration = (self._clock() - attempt_start) * 1000.0
+                prov_err = ProviderUnavailableError(
+                    f"Unexpected provider error: {exc}",
+                    provider_id=candidate.provider_id,
+                )
+                self._cooldown.record_failure(candidate.composite_id, prov_err)
+
+                failover_history.append(
+                    FailoverAttempt(
+                        attempt_number=attempt_number,
+                        composite_id=candidate.composite_id,
+                        provider_id=candidate.provider_id,
+                        model_id=candidate.model_id,
+                        success=False,
+                        error_category=prov_err.category.value,
+                        error_message=prov_err.message,
+                        is_retryable=True,
+                        latency_ms=cand_duration,
+                    )
+                )
+                last_error = prov_err
+
+                if is_explicit:
+                    logger.warning(
+                        "Explicit deployment failed with unexpected error; will not failover",
+                        deployment=candidate.composite_id,
+                        error=str(exc),
+                    )
+                    break
+
+                logger.warning(
+                    "Unexpected provider exception caught; evaluating next failover candidate",
+                    deployment=candidate.composite_id,
+                    attempt=attempt_number,
+                    error=str(exc),
                 )
 
         # If loop finished without returning, failover was exhausted or aborted

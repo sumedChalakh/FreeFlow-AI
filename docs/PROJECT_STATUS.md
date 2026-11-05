@@ -1,8 +1,8 @@
 # Project status
 
-**Last updated:** 2026-11-01T00:23:00+05:30  
-**Current milestone:** Persistence Audit & Phase 7 Preparation (verified; 105 tests passing)  
-**Latest session log:** [`SESSION_LOG.md`](SESSION_LOG.md) entry `2026-11-01T00:23:00+05:30`
+**Last updated:** 2026-11-05T19:45:00+05:30  
+**Current milestone:** Phase 8: Reliability, Security Hardening & Usability Audit (verified; 161 tests passing)  
+**Latest session log:** [`SESSION_LOG.md`](SESSION_LOG.md) entry `2026-11-05T19:45:00+05:30`
 
 ---
 
@@ -11,9 +11,9 @@
 | Field | Value |
 |---|---|
 | Product name | FreeFlow AI (provisional) |
-| Application code | Backend API (`backend/api/`, `backend/main.py`), Routing (`backend/routing/`), Catalog (`backend/catalog/`), Persistence (`backend/db/`), Providers (`backend/providers/`) |
+| Application code | Backend API (`backend/api/`, `backend/management/`, `backend/dashboard/`, `backend/main.py`), Routing (`backend/routing/`), Catalog (`backend/catalog/`), Persistence (`backend/db/`), Providers (`backend/providers/`) |
 | Git | Initialized, branch `main`, remote `origin` configured |
-| Tests | 105 passed (`pytest`); ruff, mypy clean |
+| Tests | 161 passed (`pytest`); ruff, mypy clean |
 | License | Unchosen |
 | Blockers | Open questions OQ-001 (license), OQ-004 (hosted providers), OQ-005 (credential storage) |
 
@@ -51,7 +51,7 @@
   - `POST /v1/chat/completions` (P6-T2): Executes non-streaming completions via `RoutingEngine`. Preserves honest token usage metadata.
   - Error normalization (P6-T3): Custom exception handlers map `ProviderError`, `HTTPException`, and `RequestValidationError` into OpenAI envelope shapes (`error.message`, `error.type`, `error.code`, `error.param`). Zero leakage of prompts, secrets, or internal stack traces.
   - Streaming disclosure (P6-T4): `stream=True` is explicitly rejected with HTTP 400 without false claims.
-  - Dependency injection: `backend/api/deps.py` provides clean injection for `ModelCatalog`, `RoutingEngine`, and `verify_token`.
+  - Dependency injection: `backend/api/deps.py` provides clean injection for `ModelCatalog`, `RoutingEngine`, `verify_token`, `ProviderRegistry`, and `DatabaseManager`.
 - **SQLite Persistence & Startup Restoration (P4-T1):**
   - Standard-library `sqlite3` implementation in `backend/db/` (`DatabaseManager`, `CatalogRepository`, `run_migrations`).
   - `PRAGMA user_version = 1` sequential, transactional migration runner. Tables: `providers`, `catalog_models`, `routing_profiles`.
@@ -61,26 +61,66 @@
   - Forensic corruption handling: corrupt database files preserved as `<name>.corrupt.<timestamp_ms>_<counter>.db` with millisecond collision resistance before in-memory fallback.
   - Honest degraded mode: health endpoint reports degraded status, reason, and mode (`wal`, `memory`, `in_memory_fallback`, `none`).
   - Strict privacy: zero credentials, API keys, bearer tokens, prompts, or message payloads persisted.
-- **Tests:** 105 tests across 9 files (API v1, persistence, health, auth, logging/redaction, mock provider, ollama adapter, model catalog, routing engine). All pass deterministically without external dependencies or internet access.
-
-Verified by: `uv run pytest -v` (105 passed in 0.74s); `uv run ruff check .` (all passed); `uv run ruff format --check .` (157 files formatted); `uv run mypy .` (0 issues, 37 files). Run on 2026-11-01T00:23+05:30.
+- **Authenticated Management API (Phase 7, Milestone P7-M1):**
+  - `GET /api/providers`: Returns registered adapters, base URLs, locality, and credential presence without leaking secrets.
+  - `POST /api/providers/{provider_id}/test`: Executes non-destructive health and latency probe (`test_connection(ctx)`), returning sanitized errors.
+  - `GET /api/catalog`: Returns active and stale catalog models with provider filtering and capability flags.
+  - `POST /api/catalog/refresh`: Initiates concurrency-safe live discovery for all or single provider with SQLite synchronization.
+  - `GET /api/profiles`: Lists built-in and dynamic routing profiles with candidate order and retry configurations.
+  - `GET /api/diagnostics`: Reports gateway operational status, persistence mode (WAL vs. degraded), and catalog/profile counts with file path and token sanitization.
+- **Web Dashboard App Shell & Overview (Phase 7, Milestone P7-M2):**
+  - `GET /dashboard`: Responsive, dark-first HTML application shell served via FastAPI with semantic sidebar navigation, top header, status pills, refresh controls, and overview metrics cards.
+  - `GET /`: Clean HTTP 307 redirect to `/dashboard`.
+  - Static asset delivery: `/dashboard/static/dashboard.css` and `/dashboard/static/dashboard.js` with zero external CDN dependencies.
+  - Secure in-memory token authentication: `FREEFLOW_API_TOKEN` is held strictly in volatile page memory, never saved to `localStorage`, `sessionStorage`, cookies, query parameters, or disk.
+  - Genuine API data rendering: Gateway status, SQLite WAL/degraded persistence health, provider counts, catalog counts, stale model counts, and active routing profiles are populated directly from `GET /api/diagnostics` and `GET /api/providers`.
+- **Provider Management & Live Probe Interface (Phase 7, Milestone P7-M3):**
+  - Functional sidebar navigation between Overview (`#overview`) and Providers (`#providers`) with accessible semantics (`aria-current="page"`).
+  - Dedicated Provider Management view (`#providers-view`) rendering detailed cards for all registered providers (display name, id, locality badge, endpoint URL, credential presence, enabled status).
+  - Explicit on-demand connection testing (`POST /api/providers/{provider_id}/test`) with per-provider duplicate click prevention, loading state, latency reporting, and sanitized error display.
+  - Strictly prevents implicit background probing on view load, navigation, or provider list refresh.
+  - Per-provider in-memory probe result caching during the session.
+  - XSS-safe DOM creation avoiding `innerHTML` interpolation of provider attributes.
+- **Model Catalog Explorer & On-Demand Discovery Refresh (Phase 7, Milestone P7-M4):**
+  - Activated Model Catalog in navigation with responsive hash routing (`#catalog`).
+  - Dedicated Model Catalog view panel (`#catalog-view`) with cards layout, metadata tags, and capability badges.
+  - Displays composite IDs (`<provider_id>:<model_id>`), provider ownership, locality classification (`Local` vs. `Hosted`), context window tokens, and last seen timestamps.
+  - Honest Stale Model Presentation: models restored from SQLite are highlighted with distinct `Stale` badges and warning callouts explaining that live availability is unverified.
+  - Client-side provider filtering dropdown without triggering implicit discovery requests.
+  - Explicit on-demand discovery refresh (`POST /api/catalog/refresh`) supporting complete discovery, partial discovery reporting with sanitized provider error messages, duplicate click prevention, in-flight loading spinners, and automatic catalog re-fetching.
+  - Zero token or secret leakage; DOM manipulation strictly uses `document.createElement` and `textContent`.
+- **Routing Profile Explorer & Diagnostics Inspector (Phase 7, Milestone P7-M5):**
+  - Activated Routing Profiles (`#profiles`, `#routing`) and Diagnostics (`#diagnostics`) in sidebar navigation, leaving the "Soon" badge exclusively on Settings.
+  - Dedicated Routing Profiles panel (`#profiles-view`) rendering profile cards with name, read-only status badge, description, candidate priority sequence (#1 Primary, #2 Failover, etc.), retry budget (`max_retries`), timeout ceiling, and required capability tags.
+  - Explicit operator disclaimer explaining read-only profile behavior without claiming runtime profile editing capabilities.
+  - Dedicated Diagnostics Inspector panel (`#diagnostics-view`) rendering Gateway Runtime status, Persistence Subsystem operational state (WAL mode, availability, journal mode, degradation status with honest reason if degraded, schema version note), Subsystem Inventory counts (registered providers, catalog entries, stale models, active profiles), and Operational Warnings / Degradation Feed.
+  - Manual on-demand refresh buttons (`#refresh-profiles-btn`, `#refresh-diagnostics-btn`) with in-flight loading spinners and duplicate-click guards.
+  - Strictly prevents implicit background polling, implicit connection probing, or implicit discovery refreshes.
+  - Zero secret or token leakage; all rendering uses `document.createElement` and `textContent`.
+- **Reliability, Security Hardening & Usability Audit (Phase 8):**
+  - Routing profile timeout enforcement: profile-level `timeout_seconds` is propagated to `ProviderContext` during execution.
+  - Exception containment & failover: non-`ProviderError` unexpected adapter crashes are caught and normalized to retryable `ProviderUnavailableError`, preventing unhandled crashes, recording failures in telemetry/cooldown, and enabling failover to subsequent candidates.
+  - Task cancellation preservation: `asyncio.CancelledError` is strictly unswallowed throughout routing and adapter lifecycles.
+  - Unhandled 500 error sanitization: generic exception handler registered on FastAPI returns standard OpenAI error envelope (`api_error` / `internal_server_error`) with zero stack trace or path leakage.
+  - Management error sanitization expansion: `sanitize_error` extended to eliminate `password` and `secret` patterns in addition to tokens, keys, and paths.
+  - Request validation limits: added bounds on `model` (max 256), `role` (max 64), and `name` (max 64) against memory bloat.
+  - Graceful shutdown lifecycle: `ProviderRegistry.aclose()` and `OllamaAdapter.aclose()` cleanly terminate underlying HTTP sessions on app lifespan shutdown before database closure.
+  - Dashboard usability hardening: added redundant view switch guards preventing double-renders on hash changes, and `:focus-visible` styling for sidebar links to ensure keyboard accessibility.
+- **Tests:** 161 tests across 12 test files (API v1, management API, dashboard shell/providers/catalog/profiles/diagnostics, persistence, health, auth, logging/redaction, mock provider, ollama adapter, model catalog, routing engine, reliability and security audit). All pass deterministically without external dependencies or internet access.
 
 ---
 
 ## Partially implemented
 
-- None. Phase 1, Phase 2, Phase 4 (including P4-T1), Phase 5, and Phase 6 are fully implemented and verified.
+- Phase 7: Web Dashboard (Milestones P7-M1, P7-M2, P7-M3, P7-M4, and P7-M5 complete; Settings view remains planned).
 
 ---
 
 ## Not started
 
 - Hosted provider integrations (Phase 3).
-- Web Dashboard (Phase 7).
-- Reliability, security hardening, and usability polish (Phase 8).
+- Settings dashboard view and runtime routing profile editing.
 - Packaging and portfolio release (Phase 9).
-- Web dashboard (Phase 7).
-- Packaging, Docker, and portfolio release (Phase 9).
 - LICENSE.
 
 ---
@@ -89,20 +129,19 @@ Verified by: `uv run pytest -v` (105 passed in 0.74s); `uv run ruff check .` (al
 
 1. Material open questions: OQ-001 license, OQ-005 credential storage — do not silently decide.
 2. OQ-004 hosted providers: owner must choose first hosted vendors before Phase 3 implementation.
-3. OQ-003 frontend stack: proposed but not confirmed; Phase 7 can decide.
 
 ---
 
 ## Latest test status
 
-**Run on 2026-10-31T22:30:27+05:30:**
+**Run on 2026-11-05T19:45:00+05:30:**
 
 | Tool | Command | Result |
 |---|---|---|
-| pytest | `uv run pytest -v` | 68 passed in 0.54s (exit 0) |
+| pytest | `uv run pytest -v` | 161 passed in 4.24s (exit 0) |
 | ruff lint | `uv run ruff check .` | All checks passed (exit 0) |
-| ruff format | `uv run ruff format --check .` | 140 files already formatted (exit 0) |
-| mypy | `uv run mypy .` | Success: no issues found in 20 source files (exit 0) |
+| ruff format | `uv run ruff format --check .` | 165 files already formatted (exit 0) |
+| mypy | `uv run mypy .` | Success: no issues found in 45 source files (exit 0) |
 
 ---
 
@@ -117,15 +156,16 @@ Full list: [`RISKS_AND_OPEN_QUESTIONS.md`](RISKS_AND_OPEN_QUESTIONS.md).
 
 ## Next 1–3 recommended tasks
 
-1. Resolve OQ-004 (select first hosted providers from official docs + available credentials) for Phase 3.
-2. Implement Phase 4 SQLite catalog persistence (`P4-T1`).
-3. Commit verified Phase 1, Phase 2, and Model Catalog milestone changes.
+1. Review Phase 3: First Hosted Provider Integration (upon decision on OQ-004 and OQ-005).
+2. Implement Phase 9: Packaging, Distribution & Portfolio Release (Docker, CI workflow, distribution docs).
+3. Implement Dashboard Settings & Runtime Profile Configuration (if requested by owner).
 
 ---
 
 ## Consistency notes
 
-- Backend health endpoint, auth, mock provider, Ollama adapter, and in-memory Model Catalog are implemented and tested.
-- Planned APIs beyond `/health` and `/protected` remain labeled proposed in their canonical docs.
-- Original plan file is preserved and is not live status.
-- Hosted adapters, SQLite catalog tables, routing engine, and dashboard do not exist yet.
+- Backend health endpoint, auth, mock provider, Ollama adapter, model catalog, routing engine, persistence, OpenAI-compatible API (`/v1`), management API (`/api`), and dashboard app shell (`/dashboard`) with provider management are implemented and tested.
+- All `/api` routes strictly enforce Bearer token authentication.
+- Dashboard holds the user token strictly in JavaScript page memory.
+- Provider probing is purely on-demand and explicit.
+- Zero secret leakage guaranteed across API responses, error envelopes, and static assets.

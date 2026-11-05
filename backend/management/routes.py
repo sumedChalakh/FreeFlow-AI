@@ -54,6 +54,12 @@ def sanitize_error(message: str | None) -> str | None:
     sanitized = re.sub(
         r"(token[=:]\s*)[A-Za-z0-9_\-\.]+", r"\1[REDACTED]", sanitized, flags=re.IGNORECASE
     )
+    sanitized = re.sub(
+        r"(password[=:]\s*)[A-Za-z0-9_\-\.]+", r"\1[REDACTED]", sanitized, flags=re.IGNORECASE
+    )
+    sanitized = re.sub(
+        r"(secret[=:]\s*)[A-Za-z0-9_\-\.]+", r"\1[REDACTED]", sanitized, flags=re.IGNORECASE
+    )
     # Strip windows/unix paths
     sanitized = re.sub(r"[A-Za-z]:\\[\w\\\.\-]+", "[PATH]", sanitized)
     sanitized = re.sub(r"/(?:[\w\.\-]+/)+[\w\.\-]+", "[PATH]", sanitized)

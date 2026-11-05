@@ -1,8 +1,239 @@
 # Session log
 
-**Last updated:** 2026-11-01T00:23:00+05:30  
+**Last updated:** 2026-11-05T19:45:00+05:30  
 
 Append-only. Correct factual errors with a new dated note, do not silently rewrite history.
+
+---
+
+## 2026-11-05T19:45:00+05:30 — Phase 8: Reliability, Security Hardening & Usability Audit
+
+- **Start:** 2026-11-05T19:28:00+05:30
+- **End:** 2026-11-05T19:45:00+05:30
+- **Objective:** Conduct a systematic reliability, security, and usability audit of the existing FreeFlow AI implementation, fix identified defects, harden request boundaries and exception handling, and add deterministic tests without introducing unnecessary architectural redesigns.
+
+### Files modified / created
+
+- Modified `backend/routing/engine.py` — Enforced profile-level `timeout_seconds` override on `ProviderContext` during execution; contained unexpected non-`ProviderError` adapter exceptions into retryable `ProviderUnavailableError` enabling failover to subsequent candidates and telemetry recording; strictly preserved `asyncio.CancelledError` without swallowing.
+- Modified `backend/api/errors.py` — Registered `unhandled_exception_handler` on `Exception` mapping unhandled server errors to standard OpenAI error envelope (`api_error` / `internal_server_error`) with zero stack trace or internal path leakage.
+- Modified `backend/api/models.py` — Added upper bounds `max_length=256` to `model` in `ChatCompletionRequestPayload`, and `max_length=64` to `role` and `name` in `ChatMessageInput`.
+- Modified `backend/management/routes.py` — Extended `sanitize_error` with regex patterns redacting `password[=:]` and `secret[=:]` credential tokens in addition to bearer tokens, api keys, and paths.
+- Modified `backend/providers/registry.py` — Added async `aclose()` method to close all registered adapters with cleanup methods.
+- Modified `backend/providers/ollama.py` — Added async `aclose()` method with `contextlib.suppress(Exception)` to safely close owned HTTP client connections.
+- Modified `backend/main.py` — Updated lifespan shutdown to invoke `await default_registry.aclose()` before closing the SQLite database connection.
+- Modified `backend/dashboard/static/dashboard.js` — Added duplicate render guard in `switchView` when already on the target view and hash is synchronized.
+- Modified `backend/dashboard/static/dashboard.css` — Added `.nav-link:focus-visible` outline for keyboard navigation accessibility.
+- Created `tests/test_reliability_and_security.py` — Added 12 automated unit and integration tests covering profile timeout override, unexpected exception containment and failover, explicit crash abortion, cancellation propagation, unhandled 500 OpenAI envelope mapping, payload bounds validation, comprehensive secret/path sanitization, graceful shutdown adapter and DB cleanup, and cooldown recovery after window expiry.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+### Decisions
+
+- Routing profile timeouts: when a `RoutingProfile` specifies `timeout_seconds`, it now overrides `ProviderContext.timeout_seconds` for all candidates invoked under that profile, ensuring low-latency profiles enforce strict deadlines.
+- Unexpected adapter crashes: unclassified exceptions (such as network socket or decoding errors) from provider adapters are wrapped in `ProviderUnavailableError` within `RoutingEngine`, ensuring they are logged, recorded in cooldown and failover history, and eligible for failover when running in profile mode.
+- Cancellation handling: `asyncio.CancelledError` is explicitly caught and re-raised immediately without recording as a provider failure, allowing client disconnects and task cancellations to propagate cleanly.
+- Unhandled server exceptions: uncaught 500 exceptions in the API are converted into normalized OpenAI envelopes with code `internal_server_error` without exposing Python exception names, file paths, or line numbers.
+- Secret sanitization: extended the regex in `sanitize_error` to catch `password:` and `secret=` patterns, preventing credential leakage in management diagnostic responses.
+- Payload guardrails: added `max_length` constraints to prevent memory exhaustion from arbitrarily large model names or role strings.
+- Graceful shutdown: `ProviderRegistry.aclose()` ensures provider adapters release any persistent HTTP connections when the application terminates.
+
+### Commands run and actual results
+
+1. `uv run pytest -v` (full test suite) → **161 passed in 4.24s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format --check .` → **165 files already formatted** (exit 0)
+4. `uv run mypy .` → **Success: no issues found in 45 source files** (exit 0)
+
+### Next steps
+
+- Proceed to Phase 9: Packaging, Distribution & Portfolio Release (Docker configuration, distribution docs, GitHub CI workflow).
+
+---
+
+## 2026-11-05T19:25:00+05:30 — Phase 7, Milestone P7-M5: Routing Profile Explorer & Diagnostics Inspector
+
+- **Start:** 2026-11-05T19:05:00+05:30
+- **End:** 2026-11-05T19:25:00+05:30
+- **Objective:** Implement Milestone P7-M5: dedicated Routing Profile Explorer and Diagnostics Inspector views in the FreeFlow AI dashboard consuming existing authenticated management APIs (`GET /api/profiles` and `GET /api/diagnostics`), presenting failover candidate sequences, retry budgets, capability constraints, runtime persistence health, degradation feeds, and complete regression test coverage.
+
+### Files modified / created
+
+- Modified `backend/dashboard/templates/dashboard.html` — Activated Routing Profiles (`#profiles`, `#routing`) and Diagnostics (`#diagnostics`) navigation items (removing disabled attributes and "Soon" badges), keeping "Soon" badge exclusively on Settings; added dedicated `#profiles-view` panel with header, manual refresh button (`#refresh-profiles-btn`), profiles cards container (`#profiles-cards-container`), empty state, and error alert; added dedicated `#diagnostics-view` panel with header, manual refresh button (`#refresh-diagnostics-btn`), degraded persistence alert banner, diagnostics content container (`#diagnostics-content-container`), and error alert container.
+- Modified `backend/dashboard/static/dashboard.css` — Added styling for profiles cards grid, profile cards, candidate sequence boxes, candidate priority badges (`#1 Primary`, `#2 Failover`), capability requirement tags, profile parameters grid, diagnostics inspector container, section blocks, diagnostics grid, item boxes with labels/values/subtext, operational warning cards, and healthy diagnostics cards.
+- Modified `backend/dashboard/static/dashboard.js` — Expanded client-side routing (`switchView`) to support `'profiles'` (with `'routing'` alias) and `'diagnostics'`; added in-memory state caches `cachedProfiles` and `cachedDiagnostics` with in-flight guards (`isFetchingProfiles`, `isFetchingDiagnostics`); implemented `fetchProfilesData()` invoking `GET /api/profiles` with Bearer auth; implemented `renderProfilesCards()` with safe DOM creation; implemented `fetchDiagnosticsData()` invoking `GET /api/diagnostics` with Bearer auth; implemented `renderDiagnostics()` structuring diagnostics into Gateway Runtime, Persistence Subsystem, Subsystem Inventory, and Operational Warnings / Degradation Feed; wired manual refresh buttons; preserved in-memory auth lifecycle across view switches.
+- Modified `tests/test_dashboard.py` — Updated navigation structure assertions to verify Overview, Providers, Catalog, Profiles, and Diagnostics links are active, with only Settings remaining disabled; added 6 integration tests covering profiles view DOM elements, diagnostics view DOM elements, profiles list and card rendering contract (verifying primary and failover sequence, retry ceiling, and capability constraints), diagnostics normal and degraded contracts (verifying WAL reporting, degraded in-memory mode, and secret/path sanitization), diagnostics uninitialized database reporting, and verification that listing/refreshing profiles and diagnostics executes zero implicit background probes or discovery calls.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+### Decisions
+
+- Both views are strictly read-only: no profile editing, creation, or runtime routing mutation.
+- Routing Profile Explorer clearly renders candidate order from index 0 as Primary attempt, and subsequent indices as Failover candidates with visual priority badges (`#1 Primary`, `#2 Failover`).
+- Cooldown configuration is internal to the backend `CooldownTracker` and is omitted from profiles display rather than fabricated.
+- Diagnostics Inspector organizes runtime state into four clear operational zones: Gateway Runtime, Persistence Subsystem, Subsystem Inventory, and Operational Warnings / Degradation Feed.
+- When persistence is in degraded in-memory mode, a prominent warning alert is displayed at the top of the diagnostics view with the honest failure reason.
+- Zero token or secret leakage: API tokens remain in volatile JavaScript page memory only; all rendering uses `document.createElement` and `textContent`.
+- Strictly no automatic background polling, no implicit provider discovery, and no implicit connection probes.
+
+### Commands run and actual results
+
+1. `uv run pytest -v` (full test suite) → **149 passed in 5.47s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format --check .` → **164 files already formatted** (exit 0)
+4. `uv run mypy .` → **Success: no issues found in 44 source files** (exit 0)
+
+### Next steps
+
+- Proceed with Phase 8: Reliability, Security Hardening, and Usability Polish.
+
+---
+
+## 2026-11-05T18:59:00+05:30 — Phase 7, Milestone P7-M4: Model Catalog Explorer & On-Demand Discovery Refresh
+
+- **Start:** 2026-11-05T18:47:00+05:30
+- **End:** 2026-11-05T18:59:00+05:30
+- **Objective:** Implement Milestone P7-M4: dedicated Model Catalog Explorer view in the FreeFlow AI dashboard with on-demand discovery refresh (`POST /api/catalog/refresh`), capability and context window inspection, honest stale model representation, client-side provider filtering, and complete regression test coverage.
+
+### Files modified / created
+
+- Modified `backend/dashboard/templates/dashboard.html` — Activated Model Catalog navigation item (`#catalog`, removing disabled attributes and "Soon" badge), and added dedicated `#catalog-view` panel with header, provider filter dropdown (`#catalog-provider-filter`), on-demand refresh button (`#refresh-catalog-btn`), refresh summary alert banner (`#catalog-refresh-alert`), model cards container (`#catalog-cards-container`), empty state (`#catalog-empty-state`), and error alert container (`#catalog-error-alert`).
+- Modified `backend/dashboard/static/dashboard.css` — Added styling for catalog controls, filter select dropdown, catalog cards grid, model card headers, title wraps, composite ID code blocks, metadata grid, capability tags (active and inactive states), stale warning callouts with SVG icons, and refresh summary reporting lists.
+- Modified `backend/dashboard/static/dashboard.js` — Implemented client-side view routing (`switchView`) supporting `#catalog`; added in-memory catalog data caching (`cachedCatalog`), provider filter selection, DOM-safe card rendering using `document.createElement` and `textContent`, explicit on-demand discovery refresh via `POST /api/catalog/refresh` with duplicate-submission prevention (`isRefreshingCatalog`), complete/partial/error status banners with sanitized provider error messages, and post-refresh catalog view synchronization.
+- Modified `tests/test_dashboard.py` — Updated `test_application_shell_navigation_structure` and added 7 new integration tests (23 total in file, 143 across suite) covering catalog view DOM elements, active vs. stale model card rendering contracts, colon-tagged model IDs, missing optional metadata handling, verification that listing catalog never runs implicit discovery, successful catalog refresh contract, partial provider failure with sanitized error messages, provider-filtered refresh, and 404 on unregistered providers.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+### Decisions
+
+- Reused single-page application hash routing (`#overview`, `#providers`, `#catalog`) preserving volatile in-memory token state across tab switches without page reloads.
+- Catalog data is retrieved via `GET /api/catalog` without triggering any provider discovery calls or connection probes.
+- Discovery refresh is triggered strictly by an operator clicking the explicit "Refresh Catalog" button (`POST /api/catalog/refresh`). Never executed on page load, navigation, browser reload, or filter change.
+- In-flight refresh guard (`isRefreshingCatalog`) prevents duplicate concurrent refresh requests and provides a visual spinner.
+- Stale models (`is_stale: true`) restored from persistence are presented honestly with a distinct `Stale` warning badge and an explanatory callout: *"Restored from persistent storage; awaiting discovery confirmation. Not verified against live provider."*
+- Model composite IDs with colons (e.g. `ollama:llama3.2:latest`, `ollama:qwen2.5:7b-instruct-q4_0`) are safely rendered using `document.createElement` and `textContent`, eliminating injection risks.
+- Maintained zero secret leakage: raw keys, headers, or internal traces are never displayed; error messages are sanitized by the backend.
+
+### Commands run and actual results
+
+1. `uv run pytest -v` (full test suite) → **143 passed in 12.47s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format --check .` → **164 files already formatted** (exit 0)
+4. `uv run mypy .` → **Success: no issues found in 44 source files** (exit 0)
+
+### Next steps
+
+- Proceed with Milestone P7-M5: Routing Profile Configuration & Diagnostics Inspector.
+
+---
+
+## 2026-11-02T01:21:00+05:30 — Phase 7, Milestone P7-M3: Provider Management & Live Probe Dashboard Interface
+
+- **Start:** 2026-11-02T01:10:00+05:30
+- **End:** 2026-11-02T01:21:00+05:30
+- **Objective:** Implement Milestone P7-M3: dedicated Provider Management view in the FreeFlow AI dashboard with on-demand connection testing (`POST /api/providers/{provider_id}/test`), latency and sanitized error reporting, duplicate test protection, and regression coverage.
+
+### Files modified / created
+
+- Modified `backend/dashboard/templates/dashboard.html` — Activated Providers navigation item (`#providers`, removing disabled attributes and "Soon" badge), wrapped Overview in `#overview-view`, and added dedicated `#providers-view` with header, refresh button, cards container, empty state, and error alert.
+- Modified `backend/dashboard/static/dashboard.css` — Added styling for provider management cards, metadata lists, probe status boxes, latency tags, sanitized error containers, and empty states.
+- Modified `backend/dashboard/static/dashboard.js` — Implemented client-side view routing (`switchView`), in-memory probe result tracking (`providerProbeResults`), duplicate click prevention (`activeProbes`), explicit connection testing via `POST /api/providers/{provider_id}/test`, and safe DOM node rendering.
+- Modified `tests/test_dashboard.py` — Added 6 integration tests covering active navigation semantics, provider view DOM elements, healthy/unhealthy connection probe contracts, 404 on unknown providers, safe DOM manipulation, and verification that listing/refreshing never executes implicit background probes.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+### Decisions
+
+- Used hash-based view routing (`#overview` and `#providers`) within the single-page application shell, preserving in-memory authentication and state.
+- Strictly prevented implicit connection probing: probes are executed exclusively when the user clicks "Test Connection" for that specific provider.
+- Prevented duplicate concurrent tests for a provider by tracking active probes in `activeProbes` Set and disabling that provider's button during flight.
+- Stored probe results in an in-memory `providerProbeResults` Map so results persist across view switches within the browser session.
+- Maintained zero secret leakage: raw keys, headers, or internal traces are never displayed; error messages are sanitized by the backend.
+
+### Commands run and actual results
+
+1. `uv run pytest -v tests/test_dashboard.py` → **16 passed in 1.04s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format --check .` → **164 files already formatted** (exit 0)
+4. `uv run mypy .` → **Success: no issues found in 44 source files** (exit 0)
+5. `uv run pytest -v` (full test suite) → **136 passed in 6.35s** (exit 0)
+
+### Next steps
+
+- Proceed with Milestone P7-M4: Model Catalog Explorer & On-Demand Discovery Refresh Interface.
+
+---
+
+## 2026-11-02T01:05:00+05:30 — Phase 7, Milestone P7-M2: Web Dashboard App Shell & Overview
+
+- **Start:** 2026-11-02T00:50:00+05:30
+- **End:** 2026-11-02T01:05:00+05:30
+- **Objective:** Implement Milestone P7-M2: a responsive, accessible dashboard application shell and operational overview page served directly by FastAPI, consuming the authenticated management API without external frontend dependencies or token leakage.
+
+### Files modified / created
+
+- Created `backend/dashboard/__init__.py` — Package export for `dashboard_router`.
+- Created `backend/dashboard/templates/dashboard.html` — Semantic HTML5 dashboard application shell including sidebar navigation, top header, status indicator, in-memory auth panel, degraded persistence alert banner, overview metric cards, and provider summary table.
+- Created `backend/dashboard/static/dashboard.css` — Dark-first, infrastructure-focused custom CSS adhering to craft-floor standards with accessible focus rings, custom scrollbars, and responsive grid layouts.
+- Created `backend/dashboard/static/dashboard.js` — Vanilla JavaScript client controller managing volatile in-memory token state, debounced fetching of `/api/diagnostics` and `/api/providers`, XSS-safe DOM node generation, and UI state transitions.
+- Created `backend/dashboard/routes.py` — Route handlers for `GET /dashboard` (HTMLResponse) and `GET /` (307 redirect to `/dashboard`).
+- Modified `backend/main.py` — Mounted static files under `/dashboard/static` and included `dashboard_router`.
+- Created `tests/test_dashboard.py` — 10 integration tests verifying dashboard HTML delivery, root redirect, static asset delivery, semantic shell elements, disabled future links, zero secret leakage, strictly enforced API auth, and non-interference with existing endpoints.
+- Updated documentation: `README.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`.
+
+### Decisions
+
+- Chose a lightweight HTML/CSS/Vanilla JS architecture served directly by FastAPI without adding Node.js, npm, Vite, or external CDN dependencies.
+- Retained token strictly in volatile JavaScript execution memory; never stored in localStorage, sessionStorage, cookies, or URLs.
+- Populated metrics and table strictly from genuine management API responses (`GET /api/diagnostics` and `GET /api/providers`).
+- Displayed provider connectivity status as "Unchecked" by default to avoid automatic background network probing on dashboard load.
+- Tagged future navigation items (Providers, Model Catalog, Routing Profiles, Diagnostics, Settings) with "Soon" pill badges and `aria-disabled="true"` to prevent broken links.
+
+### Commands run and actual results
+
+1. `uv run pytest -v tests/test_dashboard.py` → **10 passed in 0.27s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format --check .` → **164 files already formatted** (exit 0)
+4. `uv run mypy .` → **Success: no issues found in 44 source files** (exit 0)
+5. `uv run pytest -v` (full test suite) → **130 passed in 1.05s** (exit 0)
+
+### Next steps
+
+- Proceed with Milestone P7-M3: Provider Management & Live Probe Dashboard Interface.
+
+---
+
+## 2026-11-01T11:45:00+05:30 — Phase 7, Milestone P7-M1: Authenticated Management API Endpoints
+
+- **Start:** 2026-11-01T11:15:00+05:30
+- **End:** 2026-11-01T11:45:00+05:30
+- **Objective:** Implement secure, authenticated management API endpoints under `/api` providing the backend interface for the upcoming FreeFlow AI web dashboard, covering provider listing/health testing, catalog querying/atomic refresh, routing profiles introspection, and persistence diagnostics without secret leakage.
+
+### Files modified / created
+
+- Created `backend/management/__init__.py` — Package export for `management_router`.
+- Created `backend/management/models.py` — Pydantic models for provider lists, connection tests, catalog listings, refresh payloads and summaries, routing profile summaries, and gateway diagnostics.
+- Created `backend/management/routes.py` — Management router with 6 endpoints (`GET /api/providers`, `POST /api/providers/{provider_id}/test`, `GET /api/catalog`, `POST /api/catalog/refresh`, `GET /api/profiles`, `GET /api/diagnostics`) and `sanitize_error` helper.
+- Modified `backend/api/deps.py` — Added `get_provider_registry` and `get_db_manager` dependency injection helpers.
+- Modified `backend/main.py` — Mounted `management_router` under `/api`.
+- Modified `backend/db/repositories.py` — Added parent provider upsert (`INSERT INTO providers ... ON CONFLICT(id) DO NOTHING;`) in `save_provider_refresh` to prevent foreign key errors when refreshing unseeded providers.
+- Created `tests/test_management_api.py` — 15 integration tests covering 401 unauthenticated requests across all routes, zero credential/token leakage, provider health probe success and failure, 404 on unknown providers, active/stale catalog querying with provider filtering and multi-colon tags, refresh workflows, routing profiles inspection, and diagnostics reporting in WAL and degraded in-memory modes.
+- Updated documentation: `docs/API_SPECIFICATION.md`, `docs/PROJECT_STATUS.md`, `docs/FILE_MAP.md`, `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`, and `README.md`.
+
+### Decisions
+
+- Reused existing `verify_token` dependency for all `/api` management routes; all unauthenticated access returns 401.
+- Ensured zero secret leakage by returning `has_credential: bool` and never returning API tokens or headers.
+- Sanitized error messages across diagnostics and provider connection tests using regexes replacing bearer tokens, passwords, keys, and file paths.
+- Maintained foreign-key integrity in `save_provider_refresh` by ensuring provider rows exist prior to catalog model insertion.
+
+### Commands run and actual results
+
+1. `uv run pytest -v tests/test_management_api.py` → **15 passed in 2.73s** (exit 0)
+2. `uv run ruff check .` → **All checks passed!** (exit 0)
+3. `uv run ruff format .` → **2 files reformatted, 159 files left unchanged** (exit 0)
+4. `uv run ruff format --check .` → **161 files already formatted** (exit 0)
+5. `uv run mypy .` → **Success: no issues found in 41 source files** (exit 0)
+6. `uv run pytest -v` (full suite) → **120 passed in 5.26s** (exit 0)
+
+### Next steps
+
+- Proceed with Milestone P7-M2: Web Dashboard App Shell & Overview View.
 
 ---
 

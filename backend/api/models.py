@@ -31,15 +31,29 @@ class ModelListResponse(BaseModel):
 class ChatMessageInput(BaseModel):
     """A message in a chat completions request."""
 
-    role: str = Field(..., description="Message author role: 'system', 'user', 'assistant'")
+    role: str = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="Message author role: 'system', 'user', 'assistant'",
+    )
     content: str = Field(..., description="Text content of the message")
-    name: str | None = Field(default=None, description="Optional name of the participant")
+    name: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Optional name of the participant",
+    )
 
 
 class ChatCompletionRequestPayload(BaseModel):
     """Payload for POST /v1/chat/completions."""
 
-    model: str = Field(..., min_length=1, description="Model deployment ID or routing profile")
+    model: str = Field(
+        ...,
+        min_length=1,
+        max_length=256,
+        description="Model deployment ID or routing profile",
+    )
     messages: list[ChatMessageInput] = Field(
         ...,
         min_length=1,

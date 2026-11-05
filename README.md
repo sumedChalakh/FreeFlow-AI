@@ -1,14 +1,14 @@
 # FreeFlow AI
 
-**Last updated:** 2026-11-01T00:23:00+05:30  
-**Status:** Persistence Audit & Phase 7 Preparation verified. 105 tests passing; ruff and mypy clean.  
+**Last updated:** 2026-11-05T19:45:00+05:30  
+**Status:** Phase 8 (Reliability, Security Hardening & Usability Audit) verified. 161 tests passing; ruff and mypy clean.  
 **Working product name:** FreeFlow AI (provisional)
 
 FreeFlow AI is a **local-first, provider-agnostic AI gateway** with a model catalog, intelligent routing, automatic failover, and a web dashboard.
 
 It is intended to give a user one local API endpoint that can route requests to configured hosted AI providers or local inference runtimes. A compatible IDE or application can use that endpoint without needing to know which backend model handles each request.
 
-This repository contains a working **backend skeleton** (FastAPI, Python 3.12), **provider abstraction** (`backend/providers/`) with verified Mock and Ollama local adapters, **model catalog** (`backend/catalog/`), **SQLite persistence** (`backend/db/`), **intelligent routing engine** (`backend/routing/`), and **OpenAI-compatible HTTP gateway** (`backend/api/`), plus comprehensive documentation. Hosted provider adapters and the web dashboard are planned for subsequent phases.
+This repository contains a working **backend skeleton** (FastAPI, Python 3.12), **provider abstraction** (`backend/providers/`) with verified Mock and Ollama local adapters, **model catalog** (`backend/catalog/`), **SQLite persistence** (`backend/db/`), **intelligent routing engine** (`backend/routing/`), **OpenAI-compatible HTTP gateway** (`backend/api/`), **management API** (`backend/management/`), and **Web Dashboard** (`backend/dashboard/`) supporting Overview, Provider Management with on-demand connection testing, Model Catalog Explorer with on-demand discovery refresh, Routing Profile Explorer, and Diagnostics Inspector, plus comprehensive documentation.
 
 ---
 
@@ -16,11 +16,11 @@ This repository contains a working **backend skeleton** (FastAPI, Python 3.12), 
 
 | Item | Reality |
 |---|---|
-| Milestone | Persistence Audit & Phase 7 Preparation verified |
+| Milestone | Phase 8 (Reliability, Security Hardening & Usability Audit) verified |
 | Git | Initialized, branch `main`, remote `origin` configured |
-| Backend | FastAPI app, health, Bearer auth, structured logging, Providers, Catalog, SQLite persistence, Router, `/v1` endpoints |
-| Frontend | Not started |
-| Tests | 105 passed (pytest); ruff, mypy clean |
+| Backend | FastAPI app, health, Bearer auth, structured logging, Providers, Catalog, SQLite persistence, Router, `/v1` endpoints, `/api` management endpoints |
+| Frontend | Dashboard Overview, Provider Management, Model Catalog Explorer, Routing Profiles, & Diagnostics implemented at `/dashboard` (HTML/CSS/JS, zero external CDN) |
+| Tests | 161 passed (pytest); ruff, mypy clean |
 | License | **Not chosen.** Do not assume an open-source license. |
 
 Authoritative live status: [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
@@ -93,15 +93,18 @@ Details and diagrams: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - Model catalog engine (`ModelCatalog`) with isolated provider discovery, concurrency safety, composite ID disambiguation (`<provider_id>:<model_id>`), stale tracking, and capability/locality filtering.
 - Intelligent routing engine (`RoutingEngine`) with colon-safe model resolution, routing profiles (`default`, `coding`, `fast`, `reasoning`), health tracking with cooldown windows (`CooldownTracker`), bounded failover on retryable errors, strict non-fallback for explicit deployments, and privacy-preserving decision telemetry.
 - OpenAI-compatible v1 HTTP API (`GET /v1/models`, `POST /v1/chat/completions`) with standard error normalization envelopes, Bearer token security, honest streaming disclosure, and clean dependency injection.
-- 91 automated tests across API v1, health, auth, logging, mock provider, Ollama adapter, model catalog, and routing engine (all pass).
+- SQLite persistence (`backend/db/`) with WAL mode, foreign keys, busy timeouts, sequential transactional migrations (`PRAGMA user_version`), startup restoration of providers/catalog/profiles, stale reconciliation, atomic discovery refresh, forensic corruption backups, and degraded in-memory mode.
+- Authenticated management API (`backend/management/`) providing `/api/providers`, `/api/providers/{provider_id}/test`, `/api/catalog`, `/api/catalog/refresh`, `/api/profiles`, and `/api/diagnostics` with file-path sanitization and zero credential exposure.
+- Web Dashboard (`backend/dashboard/`) served directly by FastAPI without external CDN dependencies, featuring in-memory token security, hash routing (`#overview`, `#providers`, `#catalog`, `#profiles`, `#diagnostics`), live probe testing, on-demand catalog discovery refresh, candidate failover sequence inspection, and runtime persistence diagnostics.
+- Reliability & Security Hardening (`tests/test_reliability_and_security.py`): profile timeout enforcement, non-`ProviderError` exception containment and failover, unswallowed cancellation propagation, generic unhandled 500 mapping to OpenAI envelope without traceback leaks, management error sanitizer extension (`password`, `secret`), request payload validation bounds (`model` <= 256, `role` <= 64), graceful shutdown adapter closure (`registry.aclose()`), dashboard keyboard focus styling, and redundant view render guards.
+- 161 automated tests across all 12 test modules (all pass).
 - Quality tooling: ruff lint, ruff format, mypy — all clean.
 
 **Planned (not implemented):**
 
 - Hosted provider adapters (Phase 3).
-- Model catalog SQLite persistence and background refresh task (Phase 4 remainder).
 - Streaming chat completions (Phase 6 enhancement).
-- Web dashboard pages (Phase 7).
+- Settings view and editable routing profiles.
 - CI, packaging, and Docker (Phase 9).
 
 ---
@@ -126,6 +129,10 @@ Requires Python 3.12+ and `uv`:
    ```powershell
    Invoke-RestMethod -Uri http://127.0.0.1:8000/health -Method GET
    ```
+5. Open the Web Dashboard in your browser:
+   Navigate to `http://127.0.0.1:8000/dashboard` (or `http://127.0.0.1:8000/`).
+   Enter your configured `FREEFLOW_API_TOKEN` in the connection panel to authenticate.
+   Tokens are stored strictly in browser execution memory and never written to disk or localStorage.
 
 ## Tests and quality checks
 

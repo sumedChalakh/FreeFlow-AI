@@ -197,8 +197,20 @@ async def provider_error_handler(_: Request, exc: ProviderError) -> JSONResponse
     )
 
 
+async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    """Normalize unhandled server exceptions into OpenAI error bodies without leaking tracebacks."""
+    logger.error("Unhandled server exception", error=str(exc))
+    return make_error_response(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        message="An internal server error occurred while processing your request.",
+        error_type="api_error",
+        code="internal_server_error",
+    )
+
+
 def register_error_handlers(app: FastAPI) -> None:
     """Register all normalized error handlers on the FastAPI application."""
     app.add_exception_handler(HTTPException, http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(ProviderError, provider_error_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, unhandled_exception_handler)  # type: ignore[arg-type]

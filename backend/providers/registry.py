@@ -4,6 +4,8 @@ Decouples provider lifecycle management from routing logic, avoiding
 hardcoded provider branching throughout the codebase.
 """
 
+from backend.logger import logger
+
 from .base import ProviderAdapter
 
 
@@ -38,6 +40,19 @@ class ProviderRegistry:
     def clear(self) -> None:
         """Clear all registered adapters."""
         self._adapters.clear()
+
+    async def aclose(self) -> None:
+        """Close any resources held by registered adapters."""
+        for adapter in list(self._adapters.values()):
+            if hasattr(adapter, "aclose") and callable(adapter.aclose):
+                try:
+                    await adapter.aclose()
+                except Exception as exc:
+                    logger.warning(
+                        "Error closing provider adapter",
+                        adapter_id=adapter.adapter_id,
+                        error=str(exc),
+                    )
 
 
 # Module-level default registry instance

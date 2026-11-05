@@ -4,6 +4,7 @@ Implements model discovery, health/connection probing, and chat completion
 against local Ollama runtime instances conforming to ProviderAdapter.
 """
 
+import contextlib
 import time
 import uuid
 from typing import Any
@@ -391,3 +392,9 @@ class OllamaAdapter(ProviderAdapter):
                 f"Unexpected error during Ollama chat completion: {exc}",
                 provider_id=self.adapter_id,
             ) from exc
+
+    async def aclose(self) -> None:
+        """Close underlying HTTP client if configured."""
+        if self._http_client is not None and not self._http_client.is_closed:
+            with contextlib.suppress(Exception):
+                await self._http_client.aclose()
