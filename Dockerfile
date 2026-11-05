@@ -22,6 +22,12 @@ RUN groupadd -r -g 1000 freeflow && \
 
 WORKDIR /app
 
+# Switch to non-root user for all installation and runtime steps within /app
+USER freeflow
+
+# Add virtualenv binaries to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
 # Copy dependency specifications first for layer caching
 COPY --chown=freeflow:freeflow pyproject.toml uv.lock ./
 
@@ -34,9 +40,6 @@ COPY --chown=freeflow:freeflow README.md ./
 
 # Install the project itself in the uv virtual environment
 RUN uv sync --frozen --no-dev
-
-# Switch to non-root user
-USER freeflow
 
 # Runtime environment defaults
 # Note: Container binds 0.0.0.0 internally to accept published traffic from Docker engine.
@@ -57,4 +60,4 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).getcode() == 200 else 1)"
 
 # Start FastAPI gateway via uvicorn
-ENTRYPOINT ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
