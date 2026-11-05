@@ -1,8 +1,8 @@
 # Project status
 
-**Last updated:** 2026-11-05T20:15:00+05:30  
-**Current milestone:** Phase 9: Packaging, Distribution, CI/CD & Portfolio Release (verified with live Docker runtime audit; 167 tests passing)  
-**Latest session log:** [`SESSION_LOG.md`](SESSION_LOG.md) entry `2026-11-05T20:15:00+05:30`
+**Last updated:** 2026-11-05T20:25:00+05:30  
+**Current milestone:** Phase 9: Packaging, Distribution, CI/CD & Portfolio Release (verified with live Docker runtime audit and verified GitHub Actions CI run; 167 tests passing)  
+**Latest session log:** [`SESSION_LOG.md`](SESSION_LOG.md) entry `2026-11-05T20:25:00+05:30`
 
 ---
 
@@ -110,7 +110,7 @@
   - Production `Dockerfile`: multi-stage Python 3.12-slim build with non-root security (`freeflow:freeflow`, UID 1000), volume persistence (`/data`), healthcheck instruction using Python `urllib.request` against `/health`, and deterministic `uv` dependency installation.
   - Local-first network isolation: documented host loopback publishing (`-p 127.0.0.1:8000:8000`) and Ollama host connectivity via `FREEFLOW_OLLAMA_BASE_URL=http://host.docker.internal:11434`.
   - Docker Compose operational template in [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) with volume mounts, environment templates, and healthchecks.
-  - Multi-OS GitHub Actions CI matrix ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) testing across `ubuntu-latest` and `windows-latest` with dependency caching and least-privilege permissions.
+  - Multi-OS GitHub Actions CI matrix ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) testing across `ubuntu-latest` and `windows-latest` with dependency caching and least-privilege permissions. Live GitHub Actions run verified passing on both platforms (Run ID `42048841829`, conclusion: `success`).
   - Licensing audit: dependency licenses verified as permissive (MIT, BSD-3, Apache-2.0); project license held as provisional pending owner decision (OQ-001).
 - **Tests:** 167 tests across 13 test files (API v1, management API, dashboard shell/providers/catalog/profiles/diagnostics, persistence, health, auth, logging/redaction, mock provider, ollama adapter, model catalog, routing engine, reliability and security audit, packaging and config). All pass deterministically without external dependencies or internet access.
 
