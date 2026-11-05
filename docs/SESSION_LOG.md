@@ -1,8 +1,56 @@
 # Session log
 
-**Last updated:** 2026-11-05T19:55:00+05:30  
+**Last updated:** 2026-11-05T20:15:00+05:30  
 
 Append-only. Correct factual errors with a new dated note, do not silently rewrite history.
+
+---
+
+## 2026-11-05T20:15:00+05:30 — Phase 9: Verification Audit & Docker Runtime Hardening
+
+- **Start:** 2026-11-05T20:03:00+05:30
+- **End:** 2026-11-05T20:15:00+05:30
+- **Objective:** Final Phase 9 verification audit covering repository consistency, actual Docker runtime execution, security inspection, CI verification, and documentation synchronization.
+
+### Files modified / created
+
+- Modified `Dockerfile` — Switched to `USER freeflow` before sync steps to ensure package egg-info and virtual environment are owned by UID 1000; added `ENV PATH="/app/.venv/bin:$PATH"`; streamlined `ENTRYPOINT` to `["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
+- Modified `tests/test_packaging_and_config.py` — Updated test assertions to verify runtime `PATH` definition.
+- Modified `README.md` — Clarified Docker Compose reference template wording.
+- Modified `docs/DEPLOYMENT.md` — Added clarification that `docker-compose.yml` is an optional reference template not pre-checked into repo root.
+- Updated `docs/CHANGELOG.md`, `docs/SESSION_LOG.md`, `docs/PROJECT_STATUS.md`.
+
+### Discoveries & Decisions
+
+- Real Docker runtime execution: Discovered Docker daemon is running (`Docker version 29.6.2`). Attempting to run container with `uv run uvicorn` revealed that root-owned build artifacts prevented non-root `freeflow` user from updating egg-info timestamps at startup.
+- Fix: Placed `USER freeflow` before virtualenv installation and added `/app/.venv/bin` to `PATH`, allowing `uvicorn` to execute directly with correct permissions.
+- Runtime verification steps executed:
+  1. Built image `freeflow-ai:test` from root (code 0).
+  2. Started container with named volume `freeflow-test-vol` (code 0).
+  3. Verified non-root user via `docker exec freeflow-audit-test id` -> `uid=1000(freeflow) gid=1000(freeflow)`.
+  4. Verified `GET /health` returned `200 OK` with database status `{"available":true,"degraded":false,"reason":null,"mode":"wal"}`.
+  5. Verified `/data` permissions (`drwxr-xr-x 2 freeflow freeflow`).
+  6. Inserted test table and row into `/data/freeflow.db` and wrote `/data/persistence_marker.txt`.
+  7. Stopped and removed container (`docker stop ... && docker rm ...`).
+  8. Recreated container with identical volume `freeflow-test-vol`.
+  9. Verified SQLite row `('phase-9-volume-test',)` and marker file survived recreation without loss.
+- CI Verification: Inspected `.github/workflows/ci.yml`. Confirmed multi-OS matrix (`ubuntu-latest`, `windows-latest`), Python 3.12, `uv` caching and sync, Ruff lint, Ruff format, Mypy, Pytest, and least-privilege `contents: read`. Noted that cloud CI has not executed because no Git remote is currently configured (OQ-002).
+
+### Commands run and actual results
+
+1. `docker build -t freeflow-ai:test .` → Exit 0 (built and tagged)
+2. `docker run ...` + `docker exec ... id` → `uid=1000(freeflow)`
+3. `curl http://127.0.0.1:8001/health` → `200 OK` (WAL mode)
+4. Data creation & recreation check → `DB Rows: [('phase-9-volume-test',)]` (preserved)
+5. `uv run pytest -v` → **167 passed in 4.41s** (exit 0)
+6. `uv run ruff check .` → **All checks passed!** (exit 0)
+7. `uv run ruff format --check .` → **166 files already formatted** (exit 0)
+8. `uv run mypy .` → **Success: no issues found in 46 source files** (exit 0)
+
+### Next steps
+
+- Present Phase 9 Verification Audit Report to project owner.
+- Await owner decision on OQ-001 (License) and OQ-004 (Hosted AI Vendors) before starting Phase 3.
 
 ---
 
